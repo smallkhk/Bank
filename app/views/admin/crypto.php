@@ -2,10 +2,11 @@
 use App\Services\CryptoService as C;
 $e0 = $edit ?? ['id' => '', 'symbol' => '', 'name' => '', 'feed_id' => '', 'decimals' => 8, 'price' => 0, 'trade_fee_bps' => 100, 'min_trade' => 100, 'volatility_bps' => 0, 'status' => 'active', 'sort_order' => 0];
 ?>
-<div class="page-head"><h1>Crypto <span class="badge badge-warning">Simulated</span></h1>
+<div class="page-head"><h1>Crypto</h1>
   <div class="actions-inline"><a class="btn btn-secondary" href="<?= e(url('admin/crypto/trades')) ?>">Trades</a>
   <?php if (can('crypto.manage') && $feedOn): ?><form method="post" action="<?= e(url('admin/crypto/refresh')) ?>"><?= csrf_field() ?><button class="btn btn-primary">Update live prices now</button></form><?php endif; ?>
   <?php if (can('crypto.manage')): ?><form method="post" action="<?= e(url('admin/crypto/simulate')) ?>"><?= csrf_field() ?><button class="btn btn-ghost" title="Random-walk step for assets with volatility set">Simulate price move</button></form><?php endif; ?></div></div>
+<p class="muted small">Customers hold cash-settled positions with the bank as counterparty. Assets linked to a live price feed are shown to customers at market price; others are labelled "Simulated price".</p>
 <?php if (setting('crypto_enabled') !== '1'): ?><div class="alert alert-info">The crypto module is <strong>disabled</strong> for customers. Enable it in Settings → Crypto.</div><?php endif; ?>
 <?php if ($breaks): ?><div class="alert alert-error"><strong>Holdings reconciliation break:</strong> <?php foreach ($breaks as $b): ?><div class="mono small">Customer <?= (int) $b['customer_id'] ?> <?= e($b['symbol']) ?>: holding <?= (int) $b['quantity'] ?> vs trades <?= (int) $b['traded'] ?></div><?php endforeach; ?></div><?php endif; ?>
 
@@ -37,7 +38,7 @@ $e0 = $edit ?? ['id' => '', 'symbol' => '', 'name' => '', 'feed_id' => '', 'deci
   <h2><?= $edit ? 'Edit ' . e($e0['symbol']) : 'Add asset' ?></h2>
   <form method="post" action="<?= e(url('admin/crypto')) ?>" class="form grid-3"><?= csrf_field() ?><input type="hidden" name="id" value="<?= e($e0['id']) ?>">
     <label>Symbol <input name="symbol" value="<?= e($e0['symbol']) ?>" <?= $edit ? 'disabled' : 'required' ?> maxlength="12" placeholder="BTC"></label>
-    <label>Name <input name="name" value="<?= e($e0['name']) ?>" required maxlength="80" placeholder="Bitcoin (simulated)"></label>
+    <label>Name <input name="name" value="<?= e($e0['name']) ?>" required maxlength="80" placeholder="Bitcoin"></label>
     <label>CoinGecko coin ID <input name="feed_id" value="<?= e($e0['feed_id'] ?? '') ?>" maxlength="80" placeholder="e.g. bitcoin, ethereum, tether">
       <small class="muted">For live prices<?= $feedOn ? '' : ' (enable CoinGecko under Integrations)' ?>. The ID is in the coin's URL on coingecko.com.</small></label>
     <label>Decimal precision <input type="number" name="decimals" value="<?= (int) $e0['decimals'] ?>" min="0" max="8" <?= $edit ? 'disabled' : '' ?>><small class="muted">Fixed after creation</small></label>

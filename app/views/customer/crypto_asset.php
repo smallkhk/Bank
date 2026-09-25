@@ -14,8 +14,8 @@ if (count($pts) > 1) {
 }
 ?>
 <div class="page-head"><div><a class="back" href="<?= e(url('crypto')) ?>">← Crypto</a>
-  <h1><?= e($asset['name']) ?> <span class="muted"><?= e($asset['symbol']) ?></span> <span class="badge badge-warning">Simulated</span></h1></div></div>
-<?php include APP_PATH . '/views/partials/sim_banner.php'; ?>
+  <h1><?= e($asset['name']) ?> <span class="muted"><?= e($asset['symbol']) ?></span> <?= C::isLive($asset) ? '' : '<span class="badge badge-warning">Simulated price</span>' ?></h1></div></div>
+<?php $live = C::isLive($asset); $mixed = false; include APP_PATH . '/views/partials/sim_banner.php'; ?>
 
 <div class="two-col wide-left">
 <section class="card">

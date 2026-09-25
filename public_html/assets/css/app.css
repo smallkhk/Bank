@@ -302,3 +302,4 @@ form.inline { display: inline; }
 .webhook-box { display: grid; gap: .35rem; background: #f7f9fb; border: 1px dashed var(--border); border-radius: 10px; padding: .75rem; }
 .webhook-box code { word-break: break-all; font-size: .82rem; }
 .align-end { align-self: end; }
+.info-banner { background: #eaf2fb; border: 1px solid #c3d8f1; color: #1c4c80; border-radius: 10px; padding: .7rem 1rem; margin-bottom: 1.25rem; font-size: .9rem; }

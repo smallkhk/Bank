@@ -81,11 +81,11 @@ final class SettingsService
         'credit_cards_enabled'  => '1',
         'max_cards_per_customer'=> '5',
         'bank_country'          => 'US',
-        // Crypto (simulated)
+        // Crypto (cash-settled; prices live when linked to a market feed)
         'crypto_enabled'        => '0',
         'crypto_max_trade'      => '100000000', // 1,000,000.00 per trade
         'crypto_max_price_age_minutes' => '30',  // pause trading on feed-linked assets with older prices
-        'crypto_risk_text'      => "Crypto assets on this platform are SIMULATED. They are internal records, are not real cryptocurrency, cannot be sent to or received from a blockchain wallet, and exist only inside this platform. Prices are set by the bank and can move sharply. You may lose money you use to buy simulated assets.",      // maker-checker: approver must differ from requester
+        'crypto_risk_text'      => "Crypto on this platform is a cash-settled position that tracks the price of the asset. You do not own the underlying coins, and crypto cannot be sent to or received from external wallets. When you sell, the proceeds are paid to your account. Crypto prices are highly volatile and you can lose some or all of the money you use to buy.",
     ];
 
     public static function get(string $key, ?string $default = null): ?string

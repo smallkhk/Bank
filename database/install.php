@@ -135,6 +135,9 @@ foreach (['checking' => 'Checking', 'savings' => 'Savings', 'current' => 'Curren
 foreach (SettingsService::DEFAULTS as $k => $v) {
     Db::query('INSERT IGNORE INTO settings (`key`, `value`) VALUES (?, ?)', [$k, $v]);
 }
+// Upgrade the crypto risk notice wording only if the administrator never edited it.
+Db::query('UPDATE settings SET `value` = ? WHERE `key` = ? AND `value` = ?', [SettingsService::DEFAULTS['crypto_risk_text'], 'crypto_risk_text',
+    'Crypto assets on this platform are SIMULATED. They are internal records, are not real cryptocurrency, cannot be sent to or received from a blockchain wallet, and exist only inside this platform. Prices are set by the bank and can move sharply. You may lose money you use to buy simulated assets.']);
 
 echo "Seeding notification templates...\n";
 foreach (App\Services\NotificationService::DEFAULTS as $event => [$name, $subject, $body]) {

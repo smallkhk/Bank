@@ -7,7 +7,7 @@ use App\Core\Auth;
 use App\Core\Db;
 
 /**
- * Simulated crypto trading. The bank's SYS-CRYPTO account is the counterparty to every trade,
+ * Cash-settled crypto trading. The bank's SYS-CRYPTO account is the counterparty to every trade,
  * so each buy or sell posts balanced entries to the money ledger. Customer positions are kept in
  * crypto_transactions (source of truth), with crypto_holdings as a cache.
  *
@@ -166,7 +166,7 @@ final class CryptoService
 
             $desk = LedgerService::systemAccountId(LedgerService::SYS_CRYPTO);
             $fees = LedgerService::systemAccountId(LedgerService::SYS_FEES);
-            $label = ($side === 'buy' ? 'Buy ' : 'Sell ') . self::formatQuantity($q['quantity'], (int) $asset['decimals']) . ' ' . $asset['symbol'] . ' (simulated)';
+            $label = ($side === 'buy' ? 'Buy ' : 'Sell ') . self::formatQuantity($q['quantity'], (int) $asset['decimals']) . ' ' . $asset['symbol'] . (self::isLive($asset) ? ' (cash-settled)' : ' (simulated price)');
             $txId = LedgerService::createTransaction('crypto', $q['gross'], $acc['currency'], [
                 ($side === 'buy' ? 'from_account_id' : 'to_account_id') => $acc['id'],
                 'description' => $label, 'initiated_by' => Auth::id(), 'fee_amount' => $q['fee'],
@@ -261,6 +261,12 @@ final class CryptoService
                 AuditService::log('crypto.price_set', 'crypto_asset', $asset['symbol'], (int) $asset['price'], $price);
             }
         });
+    }
+
+    /** True when the asset's price comes from a live market feed (not set by hand or simulated). */
+    public static function isLive(array $asset): bool
+    {
+        return !empty($asset['feed_id']) && Integrations::enabled('coingecko');
     }
 
     /** Feed-linked assets must not trade on an old price (e.g. when the feed is down). */

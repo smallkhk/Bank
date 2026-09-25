@@ -42,7 +42,7 @@ final class CryptoController extends Controller
     {
         $cid = $this->cid();
         $this->view('customer/crypto', [
-            'title' => 'Crypto (simulated)',
+            'title' => 'Crypto',
             'acknowledged' => $this->acknowledged($cid),
             'assets' => Db::all("SELECT * FROM crypto_assets WHERE status <> 'inactive' ORDER BY sort_order, symbol"),
             'portfolio' => CryptoService::portfolio($cid),
