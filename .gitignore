@@ -9,3 +9,5 @@
 .DS_Store
 /storage/attachments/
 /storage/branding/
+/storage/installed.lock
+/dist/
