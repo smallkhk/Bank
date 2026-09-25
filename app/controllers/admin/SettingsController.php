@@ -71,7 +71,7 @@ final class SettingsController extends Controller
                     continue;
                 }
             } elseif ($key === 'mail_driver') {
-                $value = $value === 'mail' ? 'mail' : 'log';
+                $value = in_array($value, ['mail', 'smtp'], true) ? $value : 'log';
             } elseif ($key === 'mail_from_email') {
                 if ($value !== '' && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
                     flash('error', 'Enter a valid sender email address.');

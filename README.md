@@ -60,6 +60,21 @@ This is a closed-loop internet banking portal and internal ledger. It is written
 | **Portfolio** | Holdings, quantity, value, average cost (average-cost method, fees included), unrealised and realised profit/loss. `crypto_transactions` is the source of truth; holdings are a cache that the admin page reconciles against it. |
 | **Admin** | Asset management, manual prices, halting trading, customer exposure, trading desk balance, 30-day volume and fees, and a searchable trade blotter linked to the ledger. Permissions: `crypto.view` and `crypto.manage`. |
 
+### Phase 6: External integrations (Admin → Integrations)
+
+Every provider is **off by default**. API keys are stored AES-256-GCM encrypted (key from `app.key`), shown only masked, and never written to logs or the audit trail. Each provider has test and live modes, a **Test connection** button and an activity log.
+
+| Provider | What it does |
+|---|---|
+| **Stripe** (payments) | Customers add funds by card through **Stripe Checkout**. The payment page is hosted by Stripe, so card data never touches this server (PCI SAQ A). The account is credited only after Stripe confirms payment: by a **signed webhook** (verified with HMAC and a replay window, duplicates ignored) or by an API lookup when the customer returns. The browser redirect alone never credits anything. Amount, currency and reference are checked against what was charged, and each payment is credited to the ledger exactly once via `SYS-GATEWAY`. Min/max top-up limits and a per-hour attempt cap apply. |
+| **SMTP** (email) | Send notifications through your cPanel mailbox or any provider (SSL or STARTTLS, AUTH LOGIN). Choose "SMTP" under Settings → Email. |
+| **Twilio** (SMS) | Text alerts for the events ticked "SMS" in Templates. On first install: new device, password or security change, declined card, completed withdrawal. |
+| Card processor, KYC/AML, bank connectivity, crypto custody | Connection points documented in the app, each needing a chosen provider and contract. The service methods they plug into are listed on the page. |
+
+Emails and SMS are sent **after** the database transaction commits, so nothing is announced for an operation that rolled back, and no network call is made while account rows are locked.
+
+**Stripe setup:** create a webhook endpoint in the Stripe Dashboard pointing to `https://YOUR-DOMAIN/webhooks/stripe` with the four `checkout.session.*` events shown on the Integrations page. Paste the secret key and webhook signing secret, then test in test mode before switching to live.
+
 ### Admin settings
 
 Everything below is configured in the back office under **Settings**. Nothing needs a file edit except database credentials and `app.key`.
@@ -136,4 +151,4 @@ storage/            ← logs/, branding, attachments (outside web root)
 
 ## Roadmap
 
-Phase 4 (investments) was skipped at the owner's request. Phase 6 covers external integrations. The schema, permissions and service layer are designed so these modules can be added without reworking the core.
+Phase 4 (investments) was skipped at the owner's request. The schema, permissions and service layer are designed so these modules can be added without reworking the core.

@@ -10,6 +10,8 @@ use Throwable;
 final class Db
 {
     private static ?PDO $pdo = null;
+    /** @var callable[] work to run once the current transaction commits */
+    private static array $afterCommit = [];
 
     public static function pdo(): PDO
     {
@@ -83,12 +85,32 @@ final class Db
         try {
             $result = $fn();
             $pdo->commit();
-            return $result;
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
+            self::$afterCommit = []; // rolled back: nothing it promised may happen
             throw $e;
         }
+        $queued = self::$afterCommit;
+        self::$afterCommit = [];
+        foreach ($queued as $cb) {
+            try {
+                $cb();
+            } catch (Throwable $e) {
+                ErrorHandler::log($e); // side effects (email/SMS) must never undo a committed operation
+            }
+        }
+        return $result;
+    }
+
+    /** Run $cb after the current transaction commits (immediately if none is open). */
+    public static function afterCommit(callable $cb): void
+    {
+        if (self::$pdo !== null && self::$pdo->inTransaction()) {
+            self::$afterCommit[] = $cb;
+            return;
+        }
+        $cb();
     }
 }

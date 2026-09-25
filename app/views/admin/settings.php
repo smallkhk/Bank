@@ -75,6 +75,7 @@ $bool = function (string $k, string $label) use ($s, $ro) {
     <p class="span-2 muted">Notification emails (transfers, security alerts, password resets…). Edit their wording in <a href="<?= e(url('admin/templates')) ?>">Templates</a>.</p>
     <?php $bool('mail_enabled', 'Send email notifications'); ?>
     <label>Sending method <select name="s[mail_driver]" <?= $ro ? 'disabled' : '' ?>>
+      <option value="smtp" <?= App\Services\Mailer::driver() === 'smtp' ? 'selected' : '' ?>>SMTP server (set up under Integrations)</option>
       <option value="mail" <?= App\Services\Mailer::driver() === 'mail' ? 'selected' : '' ?>>Server mail (cPanel / PHP mail)</option>
       <option value="log" <?= App\Services\Mailer::driver() === 'log' ? 'selected' : '' ?>>Log only — don't send (for testing)</option></select></label>
     <label>Sender email <input type="email" name="s[mail_from_email]" value="<?= e($s['mail_from_email'] ?: (string) config('mail.from_email')) ?>" placeholder="no-reply@yourbank.com" <?= $ro ? 'disabled' : '' ?>>

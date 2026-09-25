@@ -7,6 +7,7 @@ namespace App\Services;
  * Outgoing email. Drivers (config mail.driver):
  *   log  — write messages to storage/logs/mail.log (default; safe for testing)
  *   mail — PHP mail(), which uses the cPanel server's sendmail
+ *   smtp — SMTP server configured under Admin → Integrations
  * Integration point: add an API-based provider driver here later.
  */
 final class Mailer
@@ -34,6 +35,13 @@ final class Mailer
         $subject = str_replace(["\r", "\n"], ' ', $subject);
         $fromName = str_replace(["\r", "\n", '"'], '', $fromName);
 
+        if (self::driver() === 'smtp') {
+            if (!Integrations::enabled('smtp')) {
+                HttpClient::log('smtp', 'out', 'send', null, false, null, 'SMTP selected but the SMTP integration is disabled');
+                return false;
+            }
+            return SmtpMailer::send(Integrations::config('smtp'), $to, $subject, $text, $fromEmail, $fromName);
+        }
         if (self::driver() === 'mail') {
             $headers = [
                 'From' => sprintf('"%s" <%s>', $fromName, $fromEmail),

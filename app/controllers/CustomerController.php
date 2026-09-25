@@ -306,6 +306,9 @@ final class CustomerController extends Controller
         $this->view('customer/add_funds', [
             'title' => 'Add funds', 'accounts' => $this->depositAccounts(),
             'enabled' => setting('customer_add_funds_requests') === '1',
+            'cardTopUp' => \App\Services\GatewayPaymentService::available(),
+            'cardLimits' => \App\Services\GatewayPaymentService::available() ? \App\Services\GatewayPaymentService::limits() : null,
+            'cardPayments' => Db::all("SELECT g.*, a.account_number FROM gateway_payments g JOIN accounts a ON a.id = g.account_id WHERE g.customer_id = ? AND g.status <> 'created' ORDER BY g.id DESC LIMIT 10", [$this->customerId()]),
             'requests' => Db::all("SELECT d.*, a.account_number FROM deposit_requests d JOIN accounts a ON a.id = d.account_id WHERE d.account_id IN ($in) AND d.kind = 'deposit' ORDER BY d.id DESC LIMIT 20", $ids),
         ]);
     }
@@ -327,6 +330,40 @@ final class CustomerController extends Controller
             'Customer add-funds request' . ($note ? ': ' . $note : ''), null, (int) Auth::id()), '/add-funds');
         clear_old();
         flash('success', 'Your request has been submitted. Funds will appear once the bank confirms receipt.');
+        redirect('/add-funds');
+    }
+
+    public function addFundsCard(): void
+    {
+        $cid = $this->customerId();
+        $amount = Money::parse(input('amount'));
+        if ($amount === null || $amount <= 0) {
+            flash('error', 'Enter a valid amount.');
+            redirect('/add-funds');
+        }
+        $url = $this->attempt(fn () => \App\Services\GatewayPaymentService::startTopUp($cid, (int) input('account_id'), $amount, (string) Auth::user()['email'], (int) Auth::id()), '/add-funds');
+        header('Location: ' . $url);
+        exit;
+    }
+
+    public function addFundsCardReturn(): void
+    {
+        $cid = $this->customerId();
+        $p = Db::one('SELECT * FROM gateway_payments WHERE reference = ? AND customer_id = ?', [input('ref'), $cid]);
+        if (!$p) {
+            $this->notFound();
+        }
+        if (input('cancelled') === '1' && in_array($p['status'], ['created', 'pending'], true)) {
+            Db::update('gateway_payments', ['status' => 'cancelled'], 'id = ? AND status IN (\'created\',\'pending\')', [$p['id']]);
+            flash('info', 'Card payment cancelled. You have not been charged.');
+            redirect('/add-funds');
+        }
+        $p = \App\Services\GatewayPaymentService::syncFromProvider($p);
+        match ($p['status']) {
+            'completed' => flash('success', money((int) $p['amount']) . ' has been added to your account.'),
+            'pending' => flash('info', 'Your payment is being confirmed. The funds will appear shortly.'),
+            default => flash('error', 'The card payment was not completed. You have not been charged.'),
+        };
         redirect('/add-funds');
     }
 

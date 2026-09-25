@@ -12,7 +12,8 @@
       <?php if ($ph[1]): ?><small class="muted">Available: <?= e(implode(', ', array_map(fn ($p) => '{{' . $p . '}}', array_unique([...$ph[1], 'name', 'bank_name'])))) ?></small><?php endif; ?></label>
     <?php if (!in_array($t['event'], ['password_reset', 'email_verify'], true)): ?>
     <div class="inline-form"><label class="check"><input type="checkbox" name="send_inapp" value="1" <?= $t['send_inapp'] ? 'checked' : '' ?>> In-app</label>
-      <label class="check"><input type="checkbox" name="send_email" value="1" <?= $t['send_email'] ? 'checked' : '' ?>> Email</label></div>
+      <label class="check"><input type="checkbox" name="send_email" value="1" <?= $t['send_email'] ? 'checked' : '' ?>> Email</label>
+      <label class="check"><input type="checkbox" name="send_sms" value="1" <?= $t['send_sms'] ? 'checked' : '' ?>> SMS<?= App\Services\Integrations::enabled('twilio') ? '' : ' <small class="muted">(needs Twilio)</small>' ?></label></div>
     <?php else: ?><p class="muted small">Always sent by email only.</p><?php endif; ?>
     <div><button class="btn btn-secondary btn-sm">Save</button></div>
   </form>

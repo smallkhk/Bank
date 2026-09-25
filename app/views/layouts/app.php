@@ -39,6 +39,7 @@ $nav = $isStaff ? array_filter([
     ['/admin/audit', 'Audit log', can('audit.view')],
     ['/admin/account-types', 'Account types', can('settings.view')],
     ['/admin/templates', 'Templates', can('settings.view')],
+    ['/admin/integrations', 'Integrations', can('integrations.manage')],
     ['/admin/settings', 'Settings', can('settings.view')],
 ], fn ($i) => $i[2]) : [
     ['/dashboard', 'Dashboard'],
@@ -48,7 +49,7 @@ $nav = $isStaff ? array_filter([
     ['/cards', 'Cards', setting('cards_enabled') === '1'],
     ['/crypto', 'Crypto', setting('crypto_enabled') === '1'],
     ['/withdrawals', 'Withdrawals', setting('withdrawals_enabled') === '1'],
-    ['/add-funds', 'Add funds', setting('customer_add_funds_requests') === '1'],
+    ['/add-funds', 'Add funds', setting('customer_add_funds_requests') === '1' || App\Services\GatewayPaymentService::available()],
     ['/support', 'Support' . ($chatUnread ? " ($chatUnread)" : ''), setting('support_enabled') === '1' || setting('chat_enabled') === '1'],
     ['/notifications', 'Notifications'],
     ['/profile', 'Security'],

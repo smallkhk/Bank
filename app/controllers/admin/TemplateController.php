@@ -31,11 +31,13 @@ final class TemplateController extends Controller
             'body' => mb_substr((string) ($_POST['body'] ?? ''), 0, 5000) ?: $t['body'],
             'send_email' => input('send_email') === '1' ? 1 : 0,
             'send_inapp' => input('send_inapp') === '1' ? 1 : 0,
+            'send_sms' => input('send_sms') === '1' ? 1 : 0,
         ];
         // Security-critical messages must always be delivered by email.
         if (in_array($t['event'], ['password_reset', 'email_verify'], true)) {
             $data['send_email'] = 1;
             $data['send_inapp'] = 0;
+            $data['send_sms'] = 0;
         }
         Db::update('notification_templates', $data, 'id = ?', [$t['id']]);
         AuditService::log('template.updated', 'notification_template', $t['event'], ['subject' => $t['subject']], ['subject' => $data['subject']]);

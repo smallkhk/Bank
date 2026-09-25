@@ -38,7 +38,8 @@ final class Router
             }
             $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
 
-            if ($method === 'POST') {
+            // Provider webhooks authenticate with signatures instead of CSRF tokens.
+            if ($method === 'POST' && !str_starts_with($path, '/webhooks/')) {
                 Csrf::verify();
             }
             foreach ($middleware as $mw) {

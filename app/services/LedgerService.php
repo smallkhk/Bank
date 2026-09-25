@@ -21,6 +21,7 @@ final class LedgerService
     public const SYS_ADJUST     = 'SYS-ADJUST';      // manual adjustments
     public const SYS_CARDS      = 'SYS-CARDS';       // simulated card network settlement
     public const SYS_INTEREST   = 'SYS-INTEREST';    // credit card interest income
+    public const SYS_GATEWAY    = 'SYS-GATEWAY';     // funds received through external payment gateways
     public const SYS_CRYPTO     = 'SYS-CRYPTO';      // simulated crypto trading desk (counterparty to trades)
 
     public static function reference(string $prefix = 'TX'): string

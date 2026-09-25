@@ -45,7 +45,7 @@ final class NotificationService
     /** Send an event notification using its template. $vars fill {{placeholders}}. */
     public static function event(int $userId, string $event, array $vars = [], ?string $link = null): void
     {
-        $user = Db::one('SELECT id, full_name, email FROM users WHERE id = ?', [$userId]);
+        $user = Db::one('SELECT id, full_name, email, phone FROM users WHERE id = ?', [$userId]);
         if (!$user) {
             return;
         }
@@ -65,11 +65,24 @@ final class NotificationService
                 'body' => mb_substr($inapp, 0, 500), 'link' => $link,
             ]);
         }
-        if ($tpl['send_email']) {
-            $footer = "\n\n— " . bank_name() . (setting('support_phone') ? ' · ' . setting('support_phone') : '')
-                . "\nThis is an automated message. Never share your password or one-time codes.";
-            Mailer::send($user['email'], $subject, $body . $footer);
-        }
+        // External delivery waits for the database commit: no email/SMS for work that rolls back,
+        // and no network calls while account rows are locked.
+        Db::afterCommit(function () use ($tpl, $user, $subject, $body) {
+            if ($tpl['send_email']) {
+                $footer = "\n\n— " . bank_name() . (setting('support_phone') ? ' · ' . setting('support_phone') : '')
+                    . "\nThis is an automated message. Never share your password or one-time codes.";
+                Mailer::send($user['email'], $subject, $body . $footer);
+            }
+            if (!empty($tpl['send_sms']) && ($phone = TwilioSms::e164($user['phone'])) && Integrations::enabled('twilio')) {
+                // SMS failures are logged but never block the banking operation that triggered them.
+                try {
+                    $sms = bank_name() . ': ' . trim((string) preg_replace('/^Hello [^\n]*\n+/', '', $body));
+                    TwilioSms::send(Integrations::config('twilio'), $phone, preg_replace('/\s+/', ' ', $sms));
+                } catch (\Throwable $e) {
+                    \App\Core\ErrorHandler::log($e);
+                }
+            }
+        });
     }
 
     public static function eventForAccountOwner(int $accountId, string $event, array $vars = [], ?string $link = null): void
@@ -94,7 +107,7 @@ final class NotificationService
     private static function template(string $event): array
     {
         try {
-            $row = Db::one('SELECT subject, body, send_email, send_inapp FROM notification_templates WHERE event = ?', [$event]);
+            $row = Db::one('SELECT subject, body, send_email, send_inapp, send_sms FROM notification_templates WHERE event = ?', [$event]);
         } catch (\PDOException) {
             $row = null;
         }
@@ -102,7 +115,7 @@ final class NotificationService
             return $row;
         }
         [, $subject, $body] = self::DEFAULTS[$event] ?? [$event, $event, ''];
-        return ['subject' => $subject, 'body' => $body, 'send_email' => 1, 'send_inapp' => 1];
+        return ['subject' => $subject, 'body' => $body, 'send_email' => 1, 'send_inapp' => 1, 'send_sms' => 0];
     }
 
     public static function render(string $text, array $vars): string

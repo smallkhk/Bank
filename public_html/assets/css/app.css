@@ -295,3 +295,10 @@ form.inline { display: inline; }
 .narrow-wide { max-width: 760px; }
 @media (min-width: 1000px) { .two-col.wide-left { grid-template-columns: 3fr 2fr; } }
 .toggle-grid { display: grid; gap: .6rem 1.5rem; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+
+/* Phase 6 — integrations */
+.integration-grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); margin-bottom: 1.25rem; }
+.integration-grid > .card { margin-bottom: 0; }
+.webhook-box { display: grid; gap: .35rem; background: #f7f9fb; border: 1px dashed var(--border); border-radius: 10px; padding: .75rem; }
+.webhook-box code { word-break: break-all; font-size: .82rem; }
+.align-end { align-self: end; }

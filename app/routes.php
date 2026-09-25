@@ -44,6 +44,9 @@ $router->post('/withdrawals', [CustomerController::class, 'requestWithdrawal'], 
 $router->post('/withdrawals/{id}/cancel', [CustomerController::class, 'cancelWithdrawal'], $c);
 $router->get('/add-funds', [CustomerController::class, 'addFundsForm'], $c);
 $router->post('/add-funds', [CustomerController::class, 'addFunds'], $c);
+$router->post('/add-funds/card', [CustomerController::class, 'addFundsCard'], $c);
+$router->get('/add-funds/card/return', [CustomerController::class, 'addFundsCardReturn'], $c);
+$router->post('/webhooks/stripe', [App\Controllers\WebhookController::class, 'stripe']);
 $router->get('/notifications', [CustomerController::class, 'notifications'], ['auth']);
 $router->get('/profile', [CustomerController::class, 'profile'], ['auth']);
 $router->post('/profile/password', [CustomerController::class, 'changePassword'], ['auth']);
@@ -168,3 +171,7 @@ $router->get('/admin/crypto/trades', [Admin\CryptoController::class, 'trades'], 
 $router->post('/admin/crypto', [Admin\CryptoController::class, 'save'], ['perm:crypto.manage']);
 $router->post('/admin/crypto/simulate', [Admin\CryptoController::class, 'simulate'], ['perm:crypto.manage']);
 $router->post('/admin/crypto/{id}/price', [Admin\CryptoController::class, 'price'], ['perm:crypto.manage']);
+
+$router->get('/admin/integrations', [Admin\IntegrationController::class, 'index'], ['perm:integrations.manage']);
+$router->post('/admin/integrations/{provider}', [Admin\IntegrationController::class, 'save'], ['perm:integrations.manage']);
+$router->post('/admin/integrations/{provider}/test', [Admin\IntegrationController::class, 'test'], ['perm:integrations.manage']);

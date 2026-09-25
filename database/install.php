@@ -87,6 +87,7 @@ $permissions = [
     'cards.view' => 'View cards', 'cards.issue' => 'Approve/issue & replace cards', 'cards.freeze' => 'Freeze, unfreeze & block cards',
     'cards.configure' => 'Configure card products & simulate card transactions',
     'crypto.view' => 'View crypto trades & holdings', 'crypto.manage' => 'Manage crypto assets & prices',
+    'integrations.manage' => 'Configure external integrations & API keys',
 ];
 $newPermissions = [];
 foreach ($permissions as $slug => $desc) {
@@ -141,10 +142,14 @@ foreach (App\Services\NotificationService::DEFAULTS as $event => [$name, $subjec
     Db::query('INSERT IGNORE INTO notification_templates (event, name, subject, body, send_email, send_inapp) VALUES (?, ?, ?, ?, 1, ?)',
         [$event, $name, $subject, $body, $emailOnly ? 0 : 1]);
 }
+// Security-sensitive events go out by SMS too, once an SMS provider is configured (only set on first install of the column).
+if (Db::value("SELECT COUNT(*) FROM notification_templates WHERE send_sms = 1") == 0) {
+    Db::query("UPDATE notification_templates SET send_sms = 1 WHERE event IN ('login_new_device','password_changed','security_changed','card_declined','withdrawal_completed')");
+}
 
 echo "Creating internal system (GL) accounts...\n";
 $currency = SettingsService::get('currency', 'USD');
-foreach ([LedgerService::SYS_FUNDING, LedgerService::SYS_SETTLEMENT, LedgerService::SYS_FEES, LedgerService::SYS_ADJUST, LedgerService::SYS_CARDS, LedgerService::SYS_INTEREST, LedgerService::SYS_CRYPTO] as $code) {
+foreach ([LedgerService::SYS_FUNDING, LedgerService::SYS_SETTLEMENT, LedgerService::SYS_FEES, LedgerService::SYS_ADJUST, LedgerService::SYS_CARDS, LedgerService::SYS_INTEREST, LedgerService::SYS_CRYPTO, LedgerService::SYS_GATEWAY] as $code) {
     Db::query('INSERT IGNORE INTO accounts (account_number, currency, is_system, system_code, nickname) VALUES (?, ?, 1, ?, ?)',
         [$code, $currency, $code, ucwords(strtolower(str_replace(['SYS-', '-'], ['', ' '], $code)))]);
 }
