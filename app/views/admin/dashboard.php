@@ -16,6 +16,7 @@
   <a class="stat stat-link" href="<?= e(url('admin/withdrawals')) ?>"><span>Pending withdrawals</span><strong><?= $stats['pending_withdrawals'] ?></strong></a>
   <a class="stat stat-link" href="<?= e(url('admin/funds')) ?>"><span>Pending add-funds</span><strong><?= $stats['pending_funds'] ?></strong></a>
   <a class="stat stat-link" href="<?= e(url('admin/transactions?status=pending')) ?>"><span>Transfers awaiting approval</span><strong><?= $stats['pending_transfers'] ?></strong></a>
+  <a class="stat stat-link" href="<?= e(url('admin/cards?tab=pending')) ?>"><span>Cards · pending issue</span><strong><?= $stats['active_cards'] ?> · <?= $stats['pending_cards'] ?></strong><small>active · pending</small></a>
   <div class="stat"><span>Failed logins (24h)</span><strong><?= $stats['failed_logins_24h'] ?></strong></div>
 </div>
 

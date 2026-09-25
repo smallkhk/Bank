@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 use App\Controllers\AuthController;
+use App\Controllers\CardController;
 use App\Controllers\CustomerController;
 use App\Controllers\SecurityController;
 use App\Controllers\SupportController;
@@ -50,6 +51,16 @@ $router->get('/profile/2fa', [SecurityController::class, 'twofa'], ['auth']);
 $router->post('/profile/2fa/enable', [SecurityController::class, 'enable'], ['auth']);
 $router->post('/profile/2fa/disable', [SecurityController::class, 'disable'], ['auth']);
 $router->post('/profile/verify-email', [CustomerController::class, 'sendVerification'], ['auth']);
+
+// Cards (customer)
+$router->get('/cards', [CardController::class, 'index'], $c);
+$router->post('/cards', [CardController::class, 'request'], $c);
+$router->get('/cards/{id}', [CardController::class, 'show'], $c);
+$router->post('/cards/{id}/freeze', [CardController::class, 'freeze'], $c);
+$router->post('/cards/{id}/controls', [CardController::class, 'controls'], $c);
+$router->post('/cards/{id}/report', [CardController::class, 'reportLost'], $c);
+$router->post('/cards/{id}/reveal', [CardController::class, 'reveal'], $c);
+$router->post('/cards/{id}/pay', [CardController::class, 'pay'], $c);
 
 // Support & chat (customer)
 $router->get('/support', [SupportController::class, 'index'], $c);
@@ -129,3 +140,16 @@ $router->post('/admin/account-types/{id}', [Admin\AccountTypeController::class, 
 $router->get('/admin/templates', [Admin\TemplateController::class, 'index'], ['perm:settings.view']);
 $router->post('/admin/templates/{id}', [Admin\TemplateController::class, 'update'], ['perm:settings.manage']);
 $router->post('/admin/templates/{id}/reset', [Admin\TemplateController::class, 'reset'], ['perm:settings.manage']);
+
+$router->get('/admin/cards', [Admin\CardController::class, 'index'], ['perm:cards.view']);
+$router->get('/admin/cards/{id}', [Admin\CardController::class, 'show'], ['perm:cards.view']);
+$router->post('/admin/customers/{id}/cards', [Admin\CardController::class, 'store'], ['perm:cards.view']);
+$router->post('/admin/cards/{id}/issue', [Admin\CardController::class, 'issue'], ['perm:cards.issue']);
+$router->post('/admin/cards/{id}/reject', [Admin\CardController::class, 'reject'], ['perm:cards.issue']);
+$router->post('/admin/cards/{id}/replace', [Admin\CardController::class, 'replace'], ['perm:cards.issue']);
+$router->post('/admin/cards/{id}/status', [Admin\CardController::class, 'status'], ['perm:cards.freeze']);
+$router->post('/admin/cards/{id}/controls', [Admin\CardController::class, 'controls'], ['perm:cards.freeze']);
+$router->post('/admin/cards/{id}/simulate', [Admin\CardController::class, 'simulate'], ['perm:cards.configure']);
+$router->post('/admin/cards/{id}/transactions/{tx}/reverse', [Admin\CardController::class, 'reverse'], ['perm:cards.configure']);
+$router->get('/admin/card-products', [Admin\CardProductController::class, 'index'], ['perm:cards.configure']);
+$router->post('/admin/card-products', [Admin\CardProductController::class, 'save'], ['perm:cards.configure']);

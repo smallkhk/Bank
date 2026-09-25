@@ -33,9 +33,14 @@ final class CustomerController extends Controller
     {
         return Db::all(
             'SELECT a.*, t.name AS type_name FROM accounts a LEFT JOIN account_types t ON t.id = a.account_type_id
-              WHERE a.customer_id = ? AND a.status <> ? ORDER BY a.id',
+              WHERE a.customer_id = ? AND a.status <> ? ORDER BY a.credit_limit > 0, a.id',
             [$this->customerId(), 'closed']
         );
+    }
+
+    private function depositAccounts(): array
+    {
+        return array_values(array_filter($this->myAccounts(), fn ($a) => (int) $a['credit_limit'] === 0));
     }
 
     /** Load an account and verify it belongs to the logged-in customer. */
@@ -108,8 +113,8 @@ final class CustomerController extends Controller
         $this->view('customer/dashboard', [
             'title'    => 'Dashboard',
             'accounts' => $accounts,
-            'total'    => array_sum(array_column($accounts, 'balance')),
-            'available'=> array_sum(array_map(fn ($a) => AccountService::available($a), $accounts)),
+            'total'    => array_sum(array_column($deposits = array_filter($accounts, fn ($a) => (int) $a['credit_limit'] === 0), 'balance')),
+            'available'=> array_sum(array_map(fn ($a) => AccountService::available($a), $deposits)),
             'recent'   => $this->history($ids, 8),
             'pendingWithdrawals' => (int) Db::value("SELECT COUNT(*) FROM withdrawal_requests WHERE account_id IN ($in) AND status = 'pending'", $ids),
         ]);
@@ -209,7 +214,7 @@ final class CustomerController extends Controller
     public function transferForm(): void
     {
         $this->view('customer/transfer', [
-            'title' => 'Transfer money', 'accounts' => $this->myAccounts(),
+            'title' => 'Transfer money', 'accounts' => $this->depositAccounts(),
             'feeFixed' => (int) setting('transfer_fee_fixed', '0'), 'feeBps' => (int) setting('transfer_fee_bps', '0'),
         ]);
     }
@@ -246,7 +251,7 @@ final class CustomerController extends Controller
         $ids = $this->accountIds();
         $in = implode(',', array_fill(0, count($ids), '?'));
         $this->view('customer/withdrawals', [
-            'title' => 'Withdrawals', 'accounts' => $this->myAccounts(), 'fee' => WithdrawalService::fee(),
+            'title' => 'Withdrawals', 'accounts' => $this->depositAccounts(), 'fee' => WithdrawalService::fee(),
             'requests' => Db::all("SELECT w.*, a.account_number FROM withdrawal_requests w JOIN accounts a ON a.id = w.account_id WHERE w.account_id IN ($in) ORDER BY w.id DESC LIMIT 50", $ids),
         ]);
     }
@@ -287,7 +292,7 @@ final class CustomerController extends Controller
         $ids = $this->accountIds();
         $in = implode(',', array_fill(0, count($ids), '?'));
         $this->view('customer/add_funds', [
-            'title' => 'Add funds', 'accounts' => $this->myAccounts(),
+            'title' => 'Add funds', 'accounts' => $this->depositAccounts(),
             'enabled' => setting('customer_add_funds_requests') === '1',
             'requests' => Db::all("SELECT d.*, a.account_number FROM deposit_requests d JOIN accounts a ON a.id = d.account_id WHERE d.account_id IN ($in) AND d.kind = 'deposit' ORDER BY d.id DESC LIMIT 20", $ids),
         ]);

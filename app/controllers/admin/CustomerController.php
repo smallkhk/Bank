@@ -63,7 +63,7 @@ final class CustomerController extends Controller
             'managers' => Db::all('SELECT am.id, u.id AS user_id, u.full_name, u.email, am.assigned_at FROM account_managers am JOIN users u ON u.id = am.manager_id WHERE am.customer_id = ?', [$c['id']]),
             'staff'    => Db::all("SELECT DISTINCT u.id, u.full_name FROM users u JOIN user_roles ur ON ur.user_id = u.id JOIN roles r ON r.id = ur.role_id
                                     WHERE u.user_type = 'staff' AND u.status = 'active' AND r.slug IN ('manager','assistant','director','support') ORDER BY u.full_name"),
-            'types'    => Db::all('SELECT slug, name FROM account_types WHERE is_active = 1 ORDER BY id'),
+            'types'    => Db::all('SELECT slug, name FROM account_types WHERE is_active = 1 AND slug <> \'credit\' ORDER BY id'),
             'audit'    => Db::all("SELECT a.*, u.full_name FROM audit_logs a LEFT JOIN users u ON u.id = a.user_id
                                     WHERE (a.target_type = 'customer' AND a.target_id = ?) OR (a.target_type = 'user' AND a.target_id = ?)
                                     ORDER BY a.id DESC LIMIT 20", [(string) $c['id'], (string) $c['user_id']]),
@@ -71,12 +71,14 @@ final class CustomerController extends Controller
             'tickets'  => can('support.view') ? Db::all('SELECT * FROM support_tickets WHERE customer_id = ? ORDER BY id DESC LIMIT 10', [$c['id']]) : [],
             'twofa'    => (bool) Db::value('SELECT twofa_enabled_at FROM users WHERE id = ?', [$c['user_id']]),
             'categories' => \App\Services\SupportService::categories(),
+            'cards'    => can('cards.view') ? Db::all('SELECT c.*, p.name AS product_name, p.card_type FROM cards c JOIN card_products p ON p.id = c.product_id WHERE c.customer_id = ? ORDER BY c.id DESC', [$c['id']]) : [],
+            'cardProducts' => can('cards.view') ? Db::all("SELECT id, name, card_type FROM card_products WHERE status = 'active' ORDER BY name") : [],
         ]);
     }
 
     public function create(): void
     {
-        $this->view('admin/customer_new', ['title' => 'New customer', 'types' => Db::all('SELECT slug, name FROM account_types WHERE is_active = 1')]);
+        $this->view('admin/customer_new', ['title' => 'New customer', 'types' => Db::all('SELECT slug, name FROM account_types WHERE is_active = 1 AND slug <> \'credit\'')]);
     }
 
     public function store(): void

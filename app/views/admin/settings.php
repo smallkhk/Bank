@@ -26,7 +26,7 @@ $bool = function (string $k, string $label) use ($s, $ro) {
     <?php $text('account_number_prefix', 'Account number prefix (digits)'); $text('account_number_branch', 'Branch / country code (digits)'); ?>
     <?php $text('account_number_length', 'Account number total length', 'number', 'Includes prefix, branch code and a check digit. 8–20.'); ?>
     <label>Default account type for new customers <select name="s[default_account_type]" <?= $ro ? 'disabled' : '' ?>>
-      <?php foreach (App\Core\Db::all('SELECT slug, name FROM account_types WHERE is_active = 1') as $t): ?><option value="<?= e($t['slug']) ?>" <?= $s['default_account_type'] === $t['slug'] ? 'selected' : '' ?>><?= e($t['name']) ?></option><?php endforeach; ?></select></label>
+      <?php foreach (App\Core\Db::all('SELECT slug, name FROM account_types WHERE is_active = 1 AND slug <> \'credit\'') as $t): ?><option value="<?= e($t['slug']) ?>" <?= $s['default_account_type'] === $t['slug'] ? 'selected' : '' ?>><?= e($t['name']) ?></option><?php endforeach; ?></select></label>
     <label>Default daily transfer limit <input name="s[default_daily_transfer_limit]" value="<?= e($money('default_daily_transfer_limit')) ?>" <?= $ro ? 'disabled' : '' ?>></label>
     <label>Default daily withdrawal limit <input name="s[default_daily_withdrawal_limit]" value="<?= e($money('default_daily_withdrawal_limit')) ?>" <?= $ro ? 'disabled' : '' ?>></label>
     <label>Default monthly outgoing limit <input name="s[default_monthly_limit]" value="<?= e($money('default_monthly_limit')) ?>" <?= $ro ? 'disabled' : '' ?>></label>

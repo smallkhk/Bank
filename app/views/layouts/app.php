@@ -6,7 +6,11 @@ $user = Auth::user();
 $isStaff = Auth::isStaff();
 $path = '/' . trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/');
 $unread = $user ? NotificationService::unreadCount((int) $user['id']) : 0;
-$openTickets = $unreadChats = $chatUnread = 0;
+$openTickets = $unreadChats = $chatUnread = $pendingCards = 0;
+if ($isStaff && can('cards.issue')) {
+    [$sc, $sp] = App\Services\StaffScope::customerFilter('c.customer_id');
+    $pendingCards = (int) App\Core\Db::value("SELECT COUNT(*) FROM cards c WHERE c.status = 'pending' AND $sc", $sp);
+}
 if ($isStaff && can('support.view')) {
     [$sc, $sp] = App\Services\StaffScope::customerFilter('t.customer_id');
     $openTickets = (int) App\Core\Db::value("SELECT COUNT(*) FROM support_tickets t WHERE $sc AND t.status IN ('open','escalated')", $sp);
@@ -23,6 +27,8 @@ $nav = $isStaff ? array_filter([
     ['/admin/accounts', 'Accounts', can('accounts.view')],
     ['/admin/transactions', 'Transactions', can('transactions.view')],
     ['/admin/withdrawals', 'Withdrawals', can('funds.approve') || can('funds.withdraw')],
+    ['/admin/cards', 'Cards' . ($pendingCards ? " ($pendingCards)" : ''), can('cards.view')],
+    ['/admin/card-products', 'Card products', can('cards.configure')],
     ['/admin/support', 'Support' . ($openTickets ? " ($openTickets)" : ''), can('support.view')],
     ['/admin/chats', 'Live chat' . ($unreadChats ? " ($unreadChats)" : ''), can('support.view')],
     ['/admin/fees', 'Fees', can('reports.view')],
@@ -38,12 +44,14 @@ $nav = $isStaff ? array_filter([
     ['/accounts', 'Accounts'],
     ['/transfer', 'Transfers'],
     ['/transactions', 'Transactions'],
+    ['/cards', 'Cards', setting('cards_enabled') === '1'],
     ['/withdrawals', 'Withdrawals'],
     ['/add-funds', 'Add funds'],
     ['/support', 'Support' . ($chatUnread ? " ($chatUnread)" : '')],
     ['/notifications', 'Notifications'],
     ['/profile', 'Security'],
 ];
+$nav = array_filter($nav, fn ($i) => $i[2] ?? true);
 $active = static function (string $href) use ($path): bool {
     return $href === $path || ($href !== '/admin' && str_starts_with($path, $href . '/'));
 };

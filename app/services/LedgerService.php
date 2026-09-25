@@ -19,6 +19,8 @@ final class LedgerService
     public const SYS_SETTLEMENT = 'SYS-SETTLEMENT';  // simulated external withdrawals
     public const SYS_FEES       = 'SYS-FEES';        // fee income
     public const SYS_ADJUST     = 'SYS-ADJUST';      // manual adjustments
+    public const SYS_CARDS      = 'SYS-CARDS';       // simulated card network settlement
+    public const SYS_INTEREST   = 'SYS-INTEREST';    // credit card interest income
 
     public static function reference(string $prefix = 'TX'): string
     {
@@ -63,7 +65,7 @@ final class LedgerService
      *
      * @param array<int, array{account_id:int, entry:string, amount:int, description?:string}> $legs
      */
-    public static function postEntries(int $transactionId, array $legs, ?int $approvedBy = null): void
+    public static function postEntries(int $transactionId, array $legs, ?int $approvedBy = null, array $allowOverLimit = []): void
     {
         $pdo = Db::pdo();
         if (!$pdo->inTransaction()) {
@@ -104,8 +106,11 @@ final class LedgerService
             }
             $before = (int) $acc['balance'];
             $after = $leg['entry'] === 'debit' ? $before - $leg['amount'] : $before + $leg['amount'];
-            if (!$acc['is_system'] && $after < 0) {
-                throw new BankingException('Insufficient funds.');
+            // Deposit accounts may never go negative; credit accounts may go down to -credit_limit.
+            // $allowOverLimit: credit accounts that may exceed their limit (interest and penalty fees only).
+            $floor = in_array((int) $acc['id'], $allowOverLimit, true) && (int) $acc['credit_limit'] > 0 ? PHP_INT_MIN : -(int) $acc['credit_limit'];
+            if (!$acc['is_system'] && $after < $floor) {
+                throw new BankingException((int) $acc['credit_limit'] > 0 ? 'Insufficient available credit.' : 'Insufficient funds.');
             }
             Db::insert('ledger_entries', [
                 'transaction_id' => $transactionId,

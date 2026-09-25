@@ -39,7 +39,7 @@ code, .mono { font-family: var(--mono); font-size: .92em; }
 .form label { display: grid; gap: .35rem; font-weight: 550; font-size: .9rem; }
 .form label.check, label.check { display: flex; gap: .55rem; align-items: flex-start; font-weight: 400; }
 input, select, textarea { font: inherit; color: inherit; width: 100%; padding: .6rem .75rem; border: 1px solid var(--border); border-radius: 9px; background: #fff; }
-input[type=checkbox] { width: auto; margin-top: .25rem; accent-color: var(--primary); }
+input[type=checkbox], input[type=radio] { width: auto; margin-top: .25rem; accent-color: var(--primary); }
 input[type=color] { padding: .2rem; height: 42px; }
 input:focus, select:focus, textarea:focus { outline: 2px solid color-mix(in srgb, var(--secondary) 35%, transparent); border-color: var(--secondary); }
 .grid-2 { grid-template-columns: 1fr; } .span-2 { grid-column: 1 / -1; }
@@ -242,3 +242,35 @@ details > summary { list-style: none; } details > summary::-webkit-details-marke
 form.inline { display: inline; }
 .linklike { background: none; border: 0; padding: 0; color: var(--secondary); font: inherit; font-size: .85rem; cursor: pointer; text-decoration: underline; }
 .form > .btn:not(.btn-block), .form > div > .btn { justify-self: start; }
+
+/* Phase 3 — cards */
+.card-grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); margin-bottom: 1.25rem; }
+.card-tile { color: inherit; display: grid; gap: .6rem; } .card-tile:hover { text-decoration: none; } .card-tile:hover .card-visual { transform: translateY(-2px); }
+.card-tile-meta { padding: 0 .25rem; }
+.card-visual { position: relative; aspect-ratio: 1.586; max-width: 380px; width: 100%; border-radius: 16px; padding: 1.1rem 1.25rem; color: #fff; display: grid; grid-template-rows: auto auto 1fr auto; overflow: hidden;
+  background: linear-gradient(135deg, var(--primary), var(--secondary)); box-shadow: 0 10px 24px rgba(11,61,99,.22); transition: transform .15s; }
+.card-visual::after { content: ""; position: absolute; right: -40px; top: -60px; width: 220px; height: 220px; border-radius: 50%; background: rgba(255,255,255,.07); }
+.cv-credit { background: linear-gradient(135deg, #1d1f24, #3d4350); }
+.cv-prepaid { background: linear-gradient(135deg, var(--accent), var(--secondary)); }
+.cv-inactive { filter: grayscale(.8); opacity: .8; }
+.cv-top { display: flex; justify-content: space-between; font-size: .8rem; font-weight: 600; letter-spacing: .02em; }
+.cv-bank { font-size: .95rem; }
+.cv-type { opacity: .8; }
+.cv-chip { width: 42px; height: 30px; border-radius: 6px; margin-top: .9rem; background: linear-gradient(135deg, #e7c979, #b8913c); }
+.cv-number { align-self: center; font-size: clamp(1rem, 4.6vw, 1.3rem); letter-spacing: .12em; }
+.cv-bottom { display: flex; gap: 1.25rem; font-size: .8rem; }
+.cv-bottom small { display: block; opacity: .7; font-size: .62rem; text-transform: uppercase; letter-spacing: .06em; }
+.cv-status { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 700; letter-spacing: .2em; background: rgba(0,0,0,.35); }
+.card-layout { display: grid; gap: 1.25rem; margin-bottom: 1.25rem; align-items: start; }
+.card-layout > .card { margin-bottom: 0; }
+.card-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; align-items: flex-end; }
+.card-actions form { margin: 0; } .card-actions .inline-form { margin-top: 0; }
+.stat-grid.tight { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin-bottom: 1rem; }
+.radio-row { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; align-items: center; }
+.w-sm { width: 110px; padding: .35rem .5rem; }
+.switch { font-weight: 550 !important; }
+.fieldset { border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin: 0; }
+.fieldset legend { font-weight: 600; font-size: .85rem; color: var(--muted); padding: 0 .4rem; }
+.grid-3 { grid-template-columns: 1fr; } .span-3 { grid-column: 1 / -1; }
+@media (min-width: 700px) { .grid-3 { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1000px) { .card-layout { grid-template-columns: minmax(300px, 400px) 1fr; } }

@@ -33,6 +33,13 @@ final class NotificationService
         'fee_charged'          => ['Fee charged', 'Fee charged', "A {{fee}} of {{amount}} was charged to {{account}}."],
         'support_reply'        => ['Support reply', 'Update on your support request {{reference}}', "There is a new reply on your support request \"{{subject}}\". Sign in to view it."],
         'chat_reply'           => ['Chat reply', 'New message from support', "You have a new message from our support team."],
+        'card_issued'          => ['Card issued', 'Your card is ready', "Your {{card}} is active (expires {{expiry}}). View the card details securely in online banking."],
+        'card_status'          => ['Card status changed', 'Card {{status}}', "Your {{card}} is now {{status}}. {{reason}}"],
+        'card_transaction'     => ['Card payment', 'Card payment of {{amount}}', "{{amount}} at {{merchant}} with card {{card}}."],
+        'card_declined'        => ['Card payment declined', 'Card payment declined', "A payment of {{amount}} at {{merchant}} with card {{card}} was declined: {{reason}}."],
+        'card_refund'          => ['Card refund', 'Refund of {{amount}}', "A refund of {{amount}} from {{merchant}} was credited to card {{card}}."],
+        'credit_statement'     => ['Credit card statement', 'Your credit card statement is ready', "Statement balance {{balance}}. Minimum payment {{minimum}} due by {{due}}."],
+        'credit_overdue'       => ['Credit card payment overdue', 'Credit card payment overdue', "We did not receive the minimum payment of {{amount}} due {{due}}. A late fee of {{fee}} was charged."],
     ];
 
     /** Send an event notification using its template. $vars fill {{placeholders}}. */

@@ -123,3 +123,37 @@
     poll();
   });
 })();
+
+// Cards: reveal details after password re-auth; hide automatically after 30 seconds.
+(function () {
+  'use strict';
+  document.addEventListener('DOMContentLoaded', function () {
+    var form = document.querySelector('[data-reveal-form]');
+    if (form) {
+      var target = document.querySelector('[data-reveal-target]');
+      var num = target.querySelector('[data-cv-number]'), cvvWrap = target.querySelector('[data-cv-cvv-wrap]'), cvv = target.querySelector('[data-cv-cvv]');
+      var masked = num.textContent, hideTimer;
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var btn = form.querySelector('button'); btn.disabled = true;
+        fetch(form.action, { method: 'POST', body: new FormData(form), credentials: 'same-origin',
+          headers: { Accept: 'application/json', 'X-CSRF-TOKEN': form.querySelector('input[name=_csrf]').value } })
+          .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || 'Failed'); return d; }); })
+          .then(function (d) {
+            num.textContent = d.number; cvv.textContent = d.cvv; cvvWrap.hidden = false; form.reset();
+            clearTimeout(hideTimer);
+            hideTimer = setTimeout(function () { num.textContent = masked; cvv.textContent = ''; cvvWrap.hidden = true; }, 30000);
+          })
+          .catch(function (err) { alert(err.message); })
+          .then(function () { btn.disabled = false; });
+      });
+    }
+    // Card request: linked account only applies to debit/prepaid products
+    var req = document.querySelector('[data-card-request]');
+    if (req) {
+      var sel = req.querySelector('[data-product]'), field = req.querySelector('[data-account-field]');
+      var sync = function () { field.hidden = sel.options[sel.selectedIndex].getAttribute('data-type') === 'credit'; };
+      sel.addEventListener('change', sync); sync();
+    }
+  });
+})();

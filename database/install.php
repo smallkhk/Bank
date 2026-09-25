@@ -38,9 +38,19 @@ foreach ($files as $file) {
         continue;
     }
     echo "  - $name\n";
-    $m = preg_replace('/^\s*--.*$/m', '', (string) file_get_contents($file));
+    // Strip "--" comments (whole-line and trailing) before splitting on semicolons.
+    $m = preg_replace('/--[^\n]*/', '', (string) file_get_contents($file));
     foreach (array_filter(array_map('trim', explode(';', $m))) as $stmt) {
-        $pdo->exec($stmt);
+        try {
+            $pdo->exec($stmt);
+        } catch (PDOException $e) {
+            // Re-running a partially applied migration: skip "already exists" errors
+            // (1050 table, 1060 column, 1061 key, 1091 can't drop) and continue.
+            if (!in_array((int) ($e->errorInfo[1] ?? 0), [1050, 1060, 1061, 1091], true)) {
+                throw $e;
+            }
+            echo "    (skipped, already applied)\n";
+        }
     }
     Db::insert('migrations', ['name' => $name]);
 }
@@ -74,8 +84,14 @@ $permissions = [
     'settings.view' => 'View settings', 'settings.manage' => 'Change settings',
     'audit.view' => 'View audit logs', 'reports.view' => 'View reports',
     'support.view' => 'View support', 'support.manage' => 'Manage support',
+    'cards.view' => 'View cards', 'cards.issue' => 'Approve/issue & replace cards', 'cards.freeze' => 'Freeze, unfreeze & block cards',
+    'cards.configure' => 'Configure card products & simulate card transactions',
 ];
+$newPermissions = [];
 foreach ($permissions as $slug => $desc) {
+    if (!Db::value('SELECT 1 FROM permissions WHERE slug = ?', [$slug])) {
+        $newPermissions[] = $slug;
+    }
     Db::query('INSERT INTO permissions (slug, description) VALUES (?, ?) ON DUPLICATE KEY UPDATE description = VALUES(description)', [$slug, $desc]);
 }
 
@@ -84,14 +100,17 @@ $roles = [
     'director' => ['Director', 'High-level operational access', [
         'customers.view', 'customers.view_all', 'accounts.view', 'transactions.view', 'transactions.approve',
         'funds.approve', 'reports.view', 'audit.view', 'staff.view', 'accounts.assign_manager', 'accounts.freeze', 'accounts.lock',
+        'cards.view', 'cards.issue', 'cards.freeze',
     ]],
     'manager' => ['Account Manager', 'Manages assigned customers', [
         'customers.view', 'customers.edit', 'accounts.view', 'accounts.create', 'transactions.view',
         'funds.add', 'funds.withdraw', 'accounts.freeze', 'accounts.limit', 'support.view',
+        'cards.view', 'cards.freeze',
     ]],
-    'assistant' => ['Assistant', 'Limited staff role', ['customers.view', 'accounts.view', 'transactions.view', 'funds.add', 'support.view']],
+    'assistant' => ['Assistant', 'Limited staff role', ['customers.view', 'accounts.view', 'transactions.view', 'funds.add', 'support.view', 'cards.view']],
     'support' => ['Support Agent', 'Customer support, no financial permissions', [
         'customers.view', 'customers.view_all', 'accounts.view', 'transactions.view', 'support.view', 'support.manage',
+        'cards.view', 'cards.freeze',
     ]],
     'customer' => ['Customer', 'Online banking customer', []],
 ];
@@ -99,15 +118,16 @@ foreach ($roles as $slug => [$name, $desc, $perms]) {
     Db::query('INSERT INTO roles (slug, name, description, is_system) VALUES (?, ?, ?, 1) ON DUPLICATE KEY UPDATE name = name', [$slug, $name, $desc]);
     $roleId = (int) Db::value('SELECT id FROM roles WHERE slug = ?', [$slug]);
     $hasAny = (int) Db::value('SELECT COUNT(*) FROM role_permissions WHERE role_id = ?', [$roleId]);
-    if ($hasAny === 0 && $perms !== ['*']) {
-        foreach ($perms as $p) {
-            Db::query('INSERT IGNORE INTO role_permissions (role_id, permission_id) SELECT ?, id FROM permissions WHERE slug = ?', [$roleId, $p]);
-        }
+    // Fresh role: grant its defaults. Existing role: only grant permissions introduced by this upgrade,
+    // so an administrator's customisations are never overwritten.
+    $grant = $perms === ['*'] ? [] : ($hasAny === 0 ? $perms : array_intersect($perms, $newPermissions));
+    foreach ($grant as $p) {
+        Db::query('INSERT IGNORE INTO role_permissions (role_id, permission_id) SELECT ?, id FROM permissions WHERE slug = ?', [$roleId, $p]);
     }
 }
 
 echo "Seeding account types and settings...\n";
-foreach (['checking' => 'Checking', 'savings' => 'Savings', 'current' => 'Current', 'business' => 'Business', 'investment' => 'Investment', 'wallet' => 'Wallet'] as $slug => $name) {
+foreach (['checking' => 'Checking', 'savings' => 'Savings', 'current' => 'Current', 'business' => 'Business', 'investment' => 'Investment', 'wallet' => 'Wallet', 'credit' => 'Credit card'] as $slug => $name) {
     Db::query('INSERT IGNORE INTO account_types (slug, name) VALUES (?, ?)', [$slug, $name]);
 }
 foreach (SettingsService::DEFAULTS as $k => $v) {
@@ -123,7 +143,7 @@ foreach (App\Services\NotificationService::DEFAULTS as $event => [$name, $subjec
 
 echo "Creating internal system (GL) accounts...\n";
 $currency = SettingsService::get('currency', 'USD');
-foreach ([LedgerService::SYS_FUNDING, LedgerService::SYS_SETTLEMENT, LedgerService::SYS_FEES, LedgerService::SYS_ADJUST] as $code) {
+foreach ([LedgerService::SYS_FUNDING, LedgerService::SYS_SETTLEMENT, LedgerService::SYS_FEES, LedgerService::SYS_ADJUST, LedgerService::SYS_CARDS, LedgerService::SYS_INTEREST] as $code) {
     Db::query('INSERT IGNORE INTO accounts (account_number, currency, is_system, system_code, nickname) VALUES (?, ?, 1, ?, ?)',
         [$code, $currency, $code, ucwords(strtolower(str_replace(['SYS-', '-'], ['', ' '], $code)))]);
 }

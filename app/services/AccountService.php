@@ -57,8 +57,11 @@ final class AccountService
         return (10 - $sum % 10) % 10;
     }
 
-    public static function open(int $customerId, string $typeSlug, ?string $currency = null, ?string $nickname = null): int
+    public static function open(int $customerId, string $typeSlug, ?string $currency = null, ?string $nickname = null, int $creditLimit = 0): int
     {
+        if (($typeSlug === 'credit') !== ($creditLimit > 0)) {
+            throw new BankingException('Credit card accounts are opened automatically when a credit card is issued.');
+        }
         $type = Db::one('SELECT * FROM account_types WHERE slug = ? AND is_active = 1', [$typeSlug]);
         if (!$type) {
             throw new BankingException('Unknown or inactive account type.');
@@ -73,6 +76,7 @@ final class AccountService
                     'nickname'        => $nickname,
                     'currency'        => $currency ?: setting('currency', 'USD'),
                     'status'          => 'active',
+                    'credit_limit'    => $creditLimit,
                     'created_by'      => Auth::id(),
                 ]);
                 AuditService::log('account.created', 'account', $id, null, ['customer_id' => $customerId, 'type' => $typeSlug]);
@@ -116,9 +120,15 @@ final class AccountService
         );
     }
 
+    /** Spendable amount. For credit accounts this is the remaining credit (limit − owed − holds). */
     public static function available(array $account): int
     {
-        return (int) $account['balance'] - (int) $account['held_amount'];
+        return (int) $account['balance'] + (int) ($account['credit_limit'] ?? 0) - (int) $account['held_amount'];
+    }
+
+    public static function isCredit(array $account): bool
+    {
+        return (int) ($account['credit_limit'] ?? 0) > 0 || ($account['type_slug'] ?? null) === 'credit';
     }
 
     public static function activeRestrictions(int $accountId): array
@@ -155,6 +165,9 @@ final class AccountService
         }
         if (self::isRestricted((int) $account['id'], $operation)) {
             throw new BankingException(ucfirst($operation) . ' are currently restricted on this account. Please contact support.');
+        }
+        if (in_array($operation, ['transfers', 'withdrawals'], true) && (int) ($account['credit_limit'] ?? 0) > 0) {
+            throw new BankingException('Transfers and withdrawals from a credit card account are not allowed.');
         }
     }
 
@@ -238,6 +251,9 @@ final class AccountService
             $acc = self::lockAccounts([$accountId])[$accountId];
             if ($acc['is_system']) {
                 throw new BankingException('System accounts cannot be changed.');
+            }
+            if ($status === 'closed' && Db::value("SELECT 1 FROM cards WHERE account_id = ? AND status IN ('active','frozen','pending')", [$accountId])) {
+                throw new BankingException('Cancel the cards linked to this account before closing it.');
             }
             if ($status === 'closed' && ((int) $acc['balance'] !== 0 || (int) $acc['held_amount'] !== 0)) {
                 throw new BankingException('An account can only be closed with a zero balance and no pending holds.');

@@ -62,6 +62,23 @@
   <?php endif; ?>
 </section>
 
+<?php if (can('cards.view')): ?>
+<section class="card">
+  <h2>Cards</h2>
+  <?php if (!$cards): ?><p class="empty">No cards.</p><?php endif; ?>
+  <?php foreach ($cards as $cd): ?>
+    <a class="list-row link-row" href="<?= e(url('admin/cards/' . $cd['id'])) ?>"><div><?= e($cd['product_name']) ?> <span class="mono"><?= $cd['pan_last4'] ? '•••• ' . e($cd['pan_last4']) : '' ?></span>
+      <div class="muted small"><?= e($cd['card_type']) ?> · expires <?= e(App\Services\CardService::expiry($cd)) ?></div></div><?= status_badge($cd['status']) ?></a>
+  <?php endforeach; ?>
+  <?php if ($cardProducts): ?>
+  <form method="post" action="<?= e(url('admin/customers/' . $c['id'] . '/cards')) ?>" class="inline-form"><?= csrf_field() ?>
+    <label>Request card <select name="product_id"><?php foreach ($cardProducts as $cp): ?><option value="<?= (int) $cp['id'] ?>"><?= e($cp['name']) ?> (<?= e($cp['card_type']) ?>)</option><?php endforeach; ?></select></label>
+    <label>Linked account (debit/prepaid) <select name="account_id"><?php foreach ($accounts as $a): if ((int) $a['credit_limit'] > 0 || $a['status'] !== 'active') continue; ?><option value="<?= (int) $a['id'] ?>"><?= e($a['account_number']) ?></option><?php endforeach; ?></select></label>
+    <button class="btn btn-secondary btn-sm">Create request</button></form>
+  <?php endif; ?>
+</section>
+<?php endif; ?>
+
 <div class="two-col">
 <?php if (can('support.view')): ?>
 <section class="card">

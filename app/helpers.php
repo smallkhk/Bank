@@ -139,6 +139,7 @@ function status_badge(string $status): string
         'locked' => 'danger', 'suspended' => 'danger', 'failed' => 'danger', 'rejected' => 'danger',
         'closed' => 'muted', 'cancelled' => 'muted',
         'open' => 'info', 'assigned' => 'info', 'escalated' => 'danger', 'resolved' => 'success', 'awaiting you' => 'warning',
+        'paid' => 'success', 'minimum paid' => 'info', 'overdue' => 'danger', 'blocked' => 'danger', 'expired' => 'muted', 'inactive' => 'muted',
     ];
     return '<span class="badge badge-' . ($map[$status] ?? 'muted') . '">' . e(ucfirst($status)) . '</span>';
 }

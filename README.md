@@ -38,6 +38,17 @@ This is a closed-loop internet banking portal and internal ledger. It is written
 | **Fees** | Monthly account fee per account type or global default, with an optional waiver above a minimum balance. The monthly cron job is **idempotent**. Staff can charge a custom fee with maker-checker approval. Fees report by type and month. Every fee is a ledger transaction. |
 | **Limits** | Resolved as individual account override → account type (**Account types** page) → global default. |
 
+### Phase 3: Cards (simulated; not connected to any card network)
+
+| Area | Details |
+|---|---|
+| **Card products** | Debit, credit or prepaid; virtual or physical. Admins set the card-number prefix, daily/monthly/ATM limits, which of online, ATM and international use are allowed, issuance and replacement fees, the international fee, and expiry. Credit products also set the limit, APR, minimum payment (percentage plus floor), statement day, days to pay, and late fee. |
+| **Lifecycle** | Customer or staff request → review → **issue**, which must be done by a different person from the requester. Statuses: pending, active, frozen, blocked, expired, cancelled, rejected. Customers can freeze/unfreeze and report a card lost or stolen, which blocks it immediately and queues a replacement. Staff can block, cancel and replace. Expiry is handled by cron. |
+| **Card data security** | Card numbers are Luhn-valid and unique. The PAN and CVV are stored only **AES-256-GCM encrypted**, with a key derived from `app.key`, plus a keyed hash for uniqueness and the last 4 digits for display. Full details are shown only for virtual cards, after the customer re-enters their password; every reveal is audited, failed attempts are throttled, and the details hide again after 30 s. |
+| **Controls** | Per-card switches for online, ATM and international use (never beyond what the product allows), and a personal daily limit capped at the product limit. An account-level `cards` restriction declines all card use on that account. |
+| **Authorisation** | `CardService::authorize()` checks, in order: card status, expiry, account status and restrictions, channel and international switches, daily, monthly and ATM limits, then available funds or credit. Approved payments post to the ledger against `SYS-CARDS` (plus any international fee). Declines are recorded and the customer is notified. Reversals and refunds give back the amount and the fee. A **simulator** on the admin card page stands in for a real processor. |
+| **Credit card accounts** | A dedicated account whose balance goes negative up to the credit limit; the ledger enforces the limit, and only interest and penalty fees may exceed it. Customers pay from their deposit accounts: full balance, minimum due, or another amount. The daily cron issues statements with a minimum payment and due date, charges **interest only when the previous statement wasn't paid in full**, charges a late fee **once** if the minimum is missed, and marks statements paid, minimum paid or overdue. Payments are matched to statements by ledger position rather than timestamp, so they are counted exactly. |
+
 Money is stored as integer minor units (cents) everywhere. Floats are never used.
 
 ## Architecture
@@ -52,7 +63,7 @@ app/
   views/            ← layouts, partials, customer/, admin/
 config/             ← config.php (not web accessible, gitignored)
 database/           ← schema.sql, migrations/, install.php
-cron/               ← scheduled jobs (monthly-fees.php)
+cron/               ← scheduled jobs (monthly-fees.php, cards-daily.php)
 storage/            ← logs/, branding, attachments (outside web root)
 ```
 
@@ -62,7 +73,7 @@ storage/            ← logs/, branding, attachments (outside web root)
 
 1. Upload the repository **above** `public_html` (for example `/home/USER/bank/`). Point the domain or subdomain document root at `bank/public_html`. Alternatively, move the contents of `public_html/` into your existing `public_html` and adjust the `require` path in `index.php`.
 2. Create a MySQL database and user in cPanel, and grant **ALL PRIVILEGES** (TRIGGER is needed for the ledger immutability triggers).
-3. Copy `config/config.example.php` to `config/config.php` and fill in the DB credentials, the URL and a random `app.key`. Keep `debug => false` and `session.secure => true` (HTTPS).
+3. Copy `config/config.example.php` to `config/config.php` and fill in the DB credentials, the URL and a random `app.key`. The key must be at least 32 characters (for example, from `php -r 'echo bin2hex(random_bytes(32));'`). It encrypts card data, so **back it up**: if it changes, stored card numbers can no longer be read. Keep `debug => false` and `session.secure => true` (HTTPS).
 4. From **Terminal** (or SSH), run the command below. Re-run it after every upgrade: it applies new migrations from `database/migrations/` automatically.
    ```
    php database/install.php
@@ -74,6 +85,11 @@ storage/            ← logs/, branding, attachments (outside web root)
    15 2 1 * * /usr/local/bin/php /home/USER/bank/cron/monthly-fees.php
    ```
    (It charges the previous month. Running it again for the same month never charges twice.)
+
+   And the daily card job (statements, interest, late fees, expiry):
+   ```
+   10 1 * * * /usr/local/bin/php /home/USER/bank/cron/cards-daily.php
+   ```
 7. Sign in at `/login`. Then open **Settings** to set the bank name and branding, and **Staff** to add a second approver. Maker-checker means an approver cannot approve their own add-funds, adjustment or withdrawal requests; there is a setting to relax this, but it is not recommended.
 
 ## Integration points (disabled by default)
@@ -81,8 +97,9 @@ storage/            ← logs/, branding, attachments (outside web root)
 - **Email/SMS:** `Mailer` (add an API/SMTP provider driver; `mail.enabled` and `mail.driver` in config)
 - **Payment/payout providers:** `FundingService` (deposits) and `WithdrawalService::approve()` (payouts)
 - **Fraud/risk:** `RiskService`
+- **Card processor / network:** replace the simulator with calls into `CardService::authorize()` / `reverse()`; swap `CardVault` for an HSM or tokenisation service before handling real cards (PCI DSS)
 - **KYC:** `customers.kyc_status` and `customer_documents`
 
 ## Roadmap
 
-Phase 3 covers cards. Phases 4–5 cover simulated investments and crypto. Phase 6 covers external integrations. The schema, permissions and service layer are designed so these modules can be added without reworking the core.
+Phases 4–5 cover simulated investments and crypto. Phase 6 covers external integrations. The schema, permissions and service layer are designed so these modules can be added without reworking the core.

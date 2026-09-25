@@ -25,7 +25,7 @@
     <?php foreach ($accounts as $a): ?>
       <a class="account-row" href="<?= e(url('accounts/' . $a['id'])) ?>">
         <div><strong><?= e($a['nickname'] ?: $a['type_name']) ?></strong><div class="muted small mono"><?= e($a['account_number']) ?></div></div>
-        <div class="right"><strong><?= e(money((int) $a['balance'], $a['currency'])) ?></strong>
+        <div class="right"><strong><?= (int) $a['credit_limit'] > 0 ? 'Owed ' . e(money(max(0, -(int) $a['balance']), $a['currency'])) : e(money((int) $a['balance'], $a['currency'])) ?></strong>
           <div class="small"><?= $a['status'] !== 'active' ? status_badge($a['status']) : '<span class="muted">Available ' . e(money(App\Services\AccountService::available($a), $a['currency'])) . '</span>' ?></div></div>
       </a>
     <?php endforeach; ?>

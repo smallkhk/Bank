@@ -19,11 +19,13 @@ final class DashboardController extends Controller
             'pending_customers'=> (int) Db::value("SELECT COUNT(*) FROM customers c JOIN users u ON u.id = c.user_id WHERE u.status = 'pending' AND $scope", $sp),
             'accounts'         => (int) Db::value("SELECT COUNT(*) FROM accounts a JOIN customers c ON c.id = a.customer_id WHERE $scope", $sp),
             'locked_accounts'  => (int) Db::value("SELECT COUNT(*) FROM accounts a JOIN customers c ON c.id = a.customer_id WHERE a.status IN ('locked','frozen','suspended') AND $scope", $sp),
-            'deposits_total'   => (int) Db::value("SELECT COALESCE(SUM(a.balance),0) FROM accounts a JOIN customers c ON c.id = a.customer_id WHERE $scope", $sp),
+            'deposits_total'   => (int) Db::value("SELECT COALESCE(SUM(a.balance),0) FROM accounts a JOIN customers c ON c.id = a.customer_id WHERE a.credit_limit = 0 AND $scope", $sp),
             'volume_30d'       => (int) Db::value("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE status = 'completed' AND type <> 'fee' AND created_at > UTC_TIMESTAMP() - INTERVAL 30 DAY"),
             'pending_withdrawals' => (int) Db::value("SELECT COUNT(*) FROM withdrawal_requests WHERE status = 'pending'"),
             'pending_funds'    => (int) Db::value("SELECT COUNT(*) FROM deposit_requests WHERE status = 'pending'"),
             'pending_transfers'=> (int) Db::value("SELECT COUNT(*) FROM transactions WHERE status = 'pending' AND type = 'transfer'"),
+            'active_cards'     => (int) Db::value("SELECT COUNT(*) FROM cards c WHERE c.status = 'active' AND " . str_replace('c.id', 'c.customer_id', $scope), $sp),
+            'pending_cards'    => (int) Db::value("SELECT COUNT(*) FROM cards WHERE status = 'pending'"),
             'failed_logins_24h'=> (int) Db::value("SELECT COUNT(*) FROM login_attempts WHERE success = 0 AND created_at > UTC_TIMESTAMP() - INTERVAL 1 DAY"),
         ];
         $daily = Db::all(

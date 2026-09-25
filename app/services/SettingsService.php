@@ -65,7 +65,11 @@ final class SettingsService
         // Support
         'support_categories'    => "Account\nTransfers\nWithdrawals\nCards\nTechnical\nComplaint\nOther",
         'support_sla_hours'     => '24',
-        'chat_enabled'          => '1',      // maker-checker: approver must differ from requester
+        'chat_enabled'          => '1',
+        // Cards
+        'cards_enabled'         => '1',
+        'credit_cards_enabled'  => '1',
+        'max_cards_per_customer'=> '5',      // maker-checker: approver must differ from requester
     ];
 
     public static function get(string $key, ?string $default = null): ?string
