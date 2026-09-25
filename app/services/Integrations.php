@@ -49,6 +49,15 @@ final class Integrations
                 'api_base' => ['API base URL (advanced)', false, false, 'Leave blank for https://api.twilio.com'],
             ],
         ],
+        'coingecko' => [
+            'type' => 'Crypto prices', 'name' => 'CoinGecko price feed', 'driver' => CoinGeckoFeed::class,
+            'description' => 'Live market prices for crypto assets. Link each asset to its CoinGecko coin ID (e.g. bitcoin) in Admin → Crypto. Prices update from the crypto-prices cron job. Holdings remain internal records.',
+            'fields' => [
+                'plan' => ['Plan', false, true, 'demo (free key) or pro'],
+                'api_key' => ['API key', true, false, 'From coingecko.com/en/developers/dashboard — recommended, the keyless API is heavily rate-limited'],
+                'api_base' => ['API base URL (advanced)', false, false, 'Leave blank for the official CoinGecko API'],
+            ],
+        ],
         // Connection points: the application exposes the hooks, a provider must be chosen and contracted.
         'card_processor' => ['type' => 'Card processing', 'name' => 'Card processor', 'driver' => null,
             'description' => 'Issuer processor (e.g. Marqeta, Galileo, Lithic) for real card issuing and authorisations. Plugs into CardService::authorize()/reverse(); requires a programme manager/BIN sponsor and PCI DSS compliance.'],

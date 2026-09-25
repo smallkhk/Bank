@@ -27,6 +27,7 @@ final class CryptoController extends Controller
             'desk' => (int) Db::value("SELECT balance FROM accounts WHERE system_code = 'SYS-CRYPTO'"),
             'volume' => Db::one("SELECT COUNT(*) AS n, COALESCE(SUM(gross),0) AS gross, COALESCE(SUM(fee),0) AS fees FROM crypto_transactions WHERE created_at > UTC_TIMESTAMP() - INTERVAL 30 DAY"),
             'breaks' => CryptoService::reconciliationBreaks(),
+            'feedOn' => \App\Services\Integrations::enabled('coingecko'),
         ]);
     }
 
@@ -59,20 +60,37 @@ final class CryptoController extends Controller
             'sort_order' => (int) input('sort_order'),
             'status' => in_array(input('status'), ['active', 'halted', 'inactive'], true) ? input('status') : 'active',
             'min_trade' => Money::parse(input('min_trade') ?: '0') ?? 0,
+            'feed_id' => strtolower(trim(input('feed_id'))) ?: null,
         ];
+        if ($data['feed_id'] !== null) {
+            if (!preg_match('/^[a-z0-9-]{1,80}$/', $data['feed_id'])) {
+                flash('error', 'The CoinGecko ID should look like "bitcoin" or "usd-coin".');
+                redirect($back);
+            }
+            if (\App\Services\Integrations::enabled('coingecko') && ($existing['feed_id'] ?? null) !== $data['feed_id']) {
+                $livePrice = \App\Services\CoinGeckoFeed::lookup($data['feed_id']);
+                if ($livePrice === null) {
+                    flash('error', 'CoinGecko has no ' . setting('currency') . ' price for "' . $data['feed_id'] . '". Check the coin ID on coingecko.com (it is in the coin page URL).');
+                    redirect($back);
+                }
+            }
+        }
         if ($data['name'] === '' || $data['min_trade'] < 1) {
             flash('error', 'Name and a minimum trade of at least 0.01 are required.');
             redirect($back);
         }
         if ($existing) {
             Db::update('crypto_assets', $data, 'id = ?', [$id]);
+            if (isset($livePrice)) {
+                CryptoService::setPrice(Db::one('SELECT * FROM crypto_assets WHERE id = ?', [$id]), $livePrice, 'feed', null);
+            }
             AuditService::log('crypto.asset_updated', 'crypto_asset', $existing['symbol'], array_intersect_key($existing, $data), $data);
             flash('success', $existing['symbol'] . ' updated.');
             redirect('/admin/crypto');
         }
         // Decimals are fixed at creation: changing them would reinterpret every stored quantity.
         $decimals = max(0, min(8, (int) input('decimals')));
-        $price = Money::parse(input('price'));
+        $price = $livePrice ?? Money::parse(input('price'));
         if (!preg_match('/^[A-Z0-9]{2,12}$/', $symbol) || !$price || Db::value('SELECT 1 FROM crypto_assets WHERE symbol = ?', [$symbol])) {
             flash('error', 'Enter a unique symbol (2–12 letters/digits) and a price above zero.');
             redirect($back);
@@ -104,6 +122,18 @@ final class CryptoController extends Controller
     {
         $n = CryptoService::simulatePrices();
         flash('success', "Simulated a price move for $n asset(s).");
+        redirect('/admin/crypto');
+    }
+
+    public function refresh(): void
+    {
+        if (!\App\Services\Integrations::enabled('coingecko')) {
+            flash('error', 'Turn on the CoinGecko price feed under Integrations first.');
+            redirect('/admin/crypto');
+        }
+        $r = \App\Services\CoinGeckoFeed::updatePrices();
+        flash($r['failed'] || $r['skipped'] ? 'error' : 'success', sprintf('Live prices: %d updated, %d rejected, %d failed.', $r['updated'], $r['skipped'], $r['failed'])
+            . ($r['messages'] ? ' ' . implode(' · ', $r['messages']) : ''));
         redirect('/admin/crypto');
     }
 }

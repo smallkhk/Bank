@@ -170,6 +170,7 @@ $router->get('/admin/crypto', [Admin\CryptoController::class, 'index'], ['perm:c
 $router->get('/admin/crypto/trades', [Admin\CryptoController::class, 'trades'], ['perm:crypto.view']);
 $router->post('/admin/crypto', [Admin\CryptoController::class, 'save'], ['perm:crypto.manage']);
 $router->post('/admin/crypto/simulate', [Admin\CryptoController::class, 'simulate'], ['perm:crypto.manage']);
+$router->post('/admin/crypto/refresh', [Admin\CryptoController::class, 'refresh'], ['perm:crypto.manage']);
 $router->post('/admin/crypto/{id}/price', [Admin\CryptoController::class, 'price'], ['perm:crypto.manage']);
 
 $router->get('/admin/integrations', [Admin\IntegrationController::class, 'index'], ['perm:integrations.manage']);

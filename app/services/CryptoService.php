@@ -126,6 +126,9 @@ final class CryptoService
             if (!$asset || $asset['status'] !== 'active') {
                 throw new BankingException('Trading in this asset is currently unavailable.');
             }
+            if (self::priceIsStale($asset)) {
+                throw new BankingException('Live prices for ' . $asset['symbol'] . ' are temporarily unavailable. Please try again shortly.');
+            }
             if ($expectedPrice !== null && $expectedPrice !== (int) $asset['price']) {
                 throw new BankingException('The price changed to ' . money((int) $asset['price']) . ' before your order was placed. Please review and try again.');
             }
@@ -260,11 +263,25 @@ final class CryptoService
         });
     }
 
-    /** Random-walk price simulator for assets with volatility > 0 (run from cron). */
+    /** Feed-linked assets must not trade on an old price (e.g. when the feed is down). */
+    public static function priceIsStale(array $asset): bool
+    {
+        if (empty($asset['feed_id']) || !Integrations::enabled('coingecko')) {
+            return false;
+        }
+        $maxAge = max(1, (int) setting('crypto_max_price_age_minutes', '30')) * 60;
+        return strtotime($asset['price_updated_at'] . ' UTC') < time() - $maxAge;
+    }
+
+    /** Random-walk price simulator for assets with volatility > 0 that are not linked to a live feed. */
     public static function simulatePrices(): int
     {
         $n = 0;
+        $feedOn = Integrations::enabled('coingecko');
         foreach (Db::all("SELECT * FROM crypto_assets WHERE status = 'active' AND volatility_bps > 0") as $a) {
+            if ($feedOn && !empty($a['feed_id'])) {
+                continue;
+            }
             $step = random_int(-(int) $a['volatility_bps'], (int) $a['volatility_bps']);
             $new = max(1, (int) $a['price'] + intdiv((int) $a['price'] * $step, 10000));
             self::setPrice($a, $new, 'simulator', null);

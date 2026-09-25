@@ -21,7 +21,8 @@ if (count($pts) > 1) {
 <section class="card">
   <div class="price-head"><strong class="price-big"><?= e(money((int) $asset['price'])) ?></strong>
     <span class="<?= $ch >= 0 ? 'pos' : 'neg' ?>"><?= $ch >= 0 ? '▲' : '▼' ?> <?= number_format(abs($ch) / 100, 2) ?>% (24h)</span>
-    <span class="muted small">Updated <?= e(fmt_date($asset['price_updated_at'])) ?></span></div>
+    <span class="muted small"><?= $asset['feed_id'] && App\Services\Integrations::enabled('coingecko') ? 'Market price · ' : '' ?>Updated <?= e(fmt_date($asset['price_updated_at'])) ?></span></div>
+  <?php if (C::priceIsStale($asset)): ?><div class="alert alert-info">Live prices are temporarily unavailable, so trading in <?= e($asset['symbol']) ?> is paused.</div><?php endif; ?>
   <?php if ($spark): ?>
     <svg class="spark <?= $pts[count($pts) - 1] >= $pts[0] ? 'up' : 'down' ?>" viewBox="0 0 600 150" preserveAspectRatio="none" role="img" aria-label="Recent price history">
       <polyline points="<?= e($spark) ?>" fill="none" stroke-width="2.5" vector-effect="non-scaling-stroke"/></svg>

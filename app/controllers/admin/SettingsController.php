@@ -27,7 +27,7 @@ final class SettingsController extends Controller
         'account_number_length' => [8, 20], 'transfer_fee_bps' => [0, 10000], 'password_min_length' => [8, 64],
         'login_max_attempts' => [3, 20], 'login_lockout_minutes' => [1, 1440], 'session_idle_minutes' => [5, 480],
         'support_sla_hours' => [1, 720], 'max_cards_per_customer' => [1, 20],
-        'risk_max_transfers_10min' => [0, 100],
+        'risk_max_transfers_10min' => [0, 100], 'crypto_max_price_age_minutes' => [5, 1440],
     ];
 
     public function index(): void

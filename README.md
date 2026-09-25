@@ -68,6 +68,7 @@ Every provider is **off by default**. API keys are stored AES-256-GCM encrypted 
 |---|---|
 | **Stripe** (payments) | Customers add funds by card through **Stripe Checkout**. The payment page is hosted by Stripe, so card data never touches this server (PCI SAQ A). The account is credited only after Stripe confirms payment: by a **signed webhook** (verified with HMAC and a replay window, duplicates ignored) or by an API lookup when the customer returns. The browser redirect alone never credits anything. Amount, currency and reference are checked against what was charged, and each payment is credited to the ledger exactly once via `SYS-GATEWAY`. Min/max top-up limits and a per-hour attempt cap apply. |
 | **SMTP** (email) | Send notifications through your cPanel mailbox or any provider (SSL or STARTTLS, AUTH LOGIN). Choose "SMTP" under Settings → Email. |
+| **CoinGecko** (crypto prices) | Live market prices for crypto assets. Link each asset to its CoinGecko coin ID (e.g. `bitcoin`) in Admin → Crypto; the `crypto-prices` cron job keeps prices current (every 5 minutes is fine on a free demo key). **Safeguards:** a price move of more than 50% in one update is rejected and audited, and trading on a feed-linked asset pauses automatically if its price is older than the limit set in Settings → Features (default 30 minutes). Only prices are live; holdings remain internal records, so the "Simulated" label stays. |
 | **Twilio** (SMS) | Text alerts for the events ticked "SMS" in Templates. On first install: new device, password or security change, declined card, completed withdrawal. |
 | Card processor, KYC/AML, bank connectivity, crypto custody | Connection points documented in the app, each needing a chosen provider and contract. The service methods they plug into are listed on the page. |
 
@@ -129,9 +130,9 @@ storage/            ← logs/, branding, attachments (outside web root)
    ```
    (It charges the previous month. Running it again for the same month never charges twice.)
 
-   Optionally, the simulated crypto price feed (every 15 minutes):
+   Crypto prices: live CoinGecko prices plus the optional simulator (every 5 minutes):
    ```
-   */15 * * * * /usr/local/bin/php /home/USER/bank/cron/crypto-prices.php
+   */5 * * * * /usr/local/bin/php /home/USER/bank/cron/crypto-prices.php
    ```
 
    And the daily card job (statements, interest, late fees, expiry):

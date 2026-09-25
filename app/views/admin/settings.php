@@ -65,6 +65,7 @@ $bool = function (string $k, string $label) use ($s, $ro) {
     <fieldset class="span-2 fieldset"><legend>Crypto</legend><div class="toggle-grid">
       <?php $bool('crypto_enabled', 'Crypto trading'); ?>
     </div><div class="form grid-2 mt">
+      <?php $text('crypto_max_price_age_minutes', 'Pause trading if a live price is older than (minutes)', 'number'); ?>
       <label>Maximum value per trade <input name="s[crypto_max_trade]" value="<?= e($money('crypto_max_trade')) ?>" <?= $ro ? 'disabled' : '' ?>></label>
       <label class="span-2">Risk notice customers accept before trading <textarea name="s[crypto_risk_text]" rows="4" <?= $ro ? 'disabled' : '' ?>><?= e($s['crypto_risk_text']) ?></textarea></label>
     </div></fieldset>
