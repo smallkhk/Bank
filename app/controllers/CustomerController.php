@@ -110,7 +110,28 @@ final class CustomerController extends Controller
         $accounts = $this->myAccounts();
         $ids = array_map('intval', array_column($accounts, 'id')) ?: [0];
         $in = implode(',', array_fill(0, count($ids), '?'));
+        // 30-day balance history for deposit accounts, rebuilt from the ledger (walk back from today's balance).
+        $depIds = array_map('intval', array_column(array_filter($accounts, fn ($a) => (int) $a['credit_limit'] === 0), 'id')) ?: [0];
+        $din = implode(',', array_fill(0, count($depIds), '?'));
+        $moves = array_column(Db::all(
+            "SELECT DATE(created_at) AS d, SUM(CASE entry_type WHEN 'credit' THEN amount ELSE -amount END) AS net
+               FROM ledger_entries WHERE account_id IN ($din) AND created_at >= UTC_DATE() - INTERVAL 29 DAY GROUP BY DATE(created_at)",
+            $depIds
+        ), 'net', 'd');
+        $running = array_sum(array_map(fn ($a) => (int) $a['balance'], array_filter($accounts, fn ($a) => (int) $a['credit_limit'] === 0)));
+        $history = [];
+        for ($i = 0; $i < 30; $i++) {
+            $day = gmdate('Y-m-d', strtotime("-$i days"));
+            $history[$day] = $running;
+            $running -= (int) ($moves[$day] ?? 0);
+        }
+        $history = array_reverse($history, true);
+        $monthIn = (int) Db::value("SELECT COALESCE(SUM(amount),0) FROM ledger_entries WHERE account_id IN ($din) AND entry_type = 'credit' AND created_at >= UTC_DATE() - INTERVAL 29 DAY", $depIds);
+        $monthOut = (int) Db::value("SELECT COALESCE(SUM(amount),0) FROM ledger_entries WHERE account_id IN ($din) AND entry_type = 'debit' AND created_at >= UTC_DATE() - INTERVAL 29 DAY", $depIds);
+
         $this->view('customer/dashboard', [
+            'history'  => $history, 'monthIn' => $monthIn, 'monthOut' => $monthOut,
+            'cardCount' => (int) Db::value("SELECT COUNT(*) FROM cards WHERE customer_id = ? AND status IN ('active','frozen')", [$this->customerId()]),
             'title'    => 'Dashboard',
             'accounts' => $accounts,
             'total'    => array_sum(array_column($deposits = array_filter($accounts, fn ($a) => (int) $a['credit_limit'] === 0), 'balance')),

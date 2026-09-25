@@ -3,7 +3,7 @@
 <head><?php include APP_PATH . '/views/partials/head.php'; ?></head>
 <body class="public">
   <?php include APP_PATH . '/views/partials/sandbox.php'; ?>
-  <header class="public-header"><?php include APP_PATH . '/views/partials/brand.php'; ?></header>
+  <header class="public-header"><?php include APP_PATH . '/views/partials/brand.php'; ?><?php include APP_PATH . '/views/partials/theme_toggle.php'; ?></header>
   <main class="public-main">
     <?php include APP_PATH . '/views/partials/flash.php'; ?>
     <?= $content ?>

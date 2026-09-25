@@ -198,3 +198,65 @@
     setSide('buy');
   });
 })();
+
+// Theme, privacy mode, count-up figures and self-dismissing confirmations.
+(function () {
+  'use strict';
+  var root = document.documentElement;
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function store(k, v) { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    // Light / dark toggle: flips whatever is currently showing and remembers the choice.
+    document.querySelectorAll('[data-theme-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var dark = root.getAttribute('data-theme') === 'dark' ||
+          (!root.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        var next = dark ? 'light' : 'dark';
+        root.setAttribute('data-theme', next);
+        store('theme', next);
+      });
+    });
+
+    // Privacy mode blurs balances (useful in public). Remembered on this device only.
+    var privacyOn = root.classList.contains('privacy-pending');
+    function applyPrivacy() {
+      document.body.classList.toggle('privacy', privacyOn);
+      root.classList.remove('privacy-pending');
+      document.querySelectorAll('[data-privacy-toggle]').forEach(function (b) {
+        b.setAttribute('aria-pressed', privacyOn ? 'true' : 'false');
+        b.title = privacyOn ? 'Show balances' : 'Hide balances';
+      });
+    }
+    applyPrivacy();
+    document.querySelectorAll('[data-privacy-toggle]').forEach(function (b) {
+      b.addEventListener('click', function () { privacyOn = !privacyOn; store('privacy', privacyOn ? '1' : null); applyPrivacy(); });
+    });
+
+    // Count-up for headline amounts. The final text is always the server's exact figure.
+    if (!reduceMotion) {
+      var symbol = document.body.getAttribute('data-currency-symbol') || '';
+      document.querySelectorAll('[data-countup]').forEach(function (el) {
+        var target = parseInt(el.getAttribute('data-countup'), 10), finalText = el.textContent;
+        if (!isFinite(target) || target <= 0 || finalText.indexOf(symbol) !== 0) return;
+        var start = null, dur = 900;
+        function frame(ts) {
+          if (!start) start = ts;
+          var p = Math.min(1, (ts - start) / dur), eased = 1 - Math.pow(1 - p, 3);
+          var v = Math.round(target * eased) / 100;
+          el.textContent = p < 1 ? symbol + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : finalText;
+          if (p < 1) requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+      });
+    }
+
+    // Success confirmations fade away after a few seconds; errors stay until the user acts.
+    document.querySelectorAll('.alert[data-autohide]').forEach(function (el) {
+      setTimeout(function () {
+        el.classList.add('is-leaving');
+        setTimeout(function () { el.remove(); }, 400);
+      }, 6000);
+    });
+  });
+})();

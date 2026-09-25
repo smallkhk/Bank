@@ -1,5 +1,6 @@
 <?php $max = max(1, ...array_map(fn ($d) => max($d), array_values($series))); ?>
-<div class="page-head"><h1>Overview</h1><p class="muted"><?= App\Services\StaffScope::seesAll() ? 'All customers' : 'Your assigned customers' ?></p></div>
+<div class="page-head"><div><div class="eyebrow"><?= e(fmt_date(now(), 'l, F j')) ?> · <?= App\Services\StaffScope::seesAll() ? 'All customers' : 'Your assigned customers' ?></div>
+  <h1><?= e(greeting()) ?>, <?= e(explode(' ', trim(App\Core\Auth::user()['full_name']))[0]) ?></h1></div></div>
 
 <?php if ($breaks): ?>
   <div class="alert alert-error"><strong>Ledger reconciliation break:</strong> <?= count($breaks) ?> account(s) have a cached balance that differs from the ledger. Investigate immediately.

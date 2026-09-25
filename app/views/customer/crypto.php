@@ -28,7 +28,7 @@ $mixed = in_array(true, $liveFlags, true) && !$live; ?>
   <?php foreach ($assets as $a): $ch = C::changeBps($a); ?>
     <a class="list-row link-row" href="<?= e(url('crypto/' . $a['symbol'])) ?>">
       <div class="asset-id"><span class="asset-icon"><?= e(substr($a['symbol'], 0, 1)) ?></span><div><strong><?= e($a['symbol']) ?></strong><div class="muted small"><?= e($a['name']) ?></div></div></div>
-      <div class="right"><strong><?= e(money((int) $a['price'])) ?></strong>
+      <div class="right"><strong><?= C::isLive($a) && !C::priceIsStale($a) ? '<span class="live-dot" title="Live market price"></span> ' : '' ?><?= e(money((int) $a['price'])) ?></strong>
         <div class="small <?= $ch >= 0 ? 'pos' : 'neg' ?>"><?= $ch >= 0 ? '▲' : '▼' ?> <?= number_format(abs($ch) / 100, 2) ?>%<?= $a['status'] === 'halted' ? ' · <span class="badge badge-warning">Halted</span>' : '' ?><?= !C::isLive($a) && !$live && $mixed ? ' · <span class="badge badge-muted">Simulated price</span>' : '' ?></div></div>
     </a>
   <?php endforeach; ?>

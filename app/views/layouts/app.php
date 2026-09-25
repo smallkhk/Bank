@@ -21,40 +21,41 @@ if ($isStaff && can('support.view')) {
     $chatUnread = App\Services\ChatService::unreadForCustomer($cid);
 }
 
-$nav = $isStaff ? array_filter([
-    ['/admin', 'Overview', true],
-    ['/admin/customers', 'Customers', can('customers.view')],
-    ['/admin/accounts', 'Accounts', can('accounts.view')],
-    ['/admin/transactions', 'Transactions', can('transactions.view')],
-    ['/admin/withdrawals', 'Withdrawals', can('funds.approve') || can('funds.withdraw')],
-    ['/admin/cards', 'Cards' . ($pendingCards ? " ($pendingCards)" : ''), can('cards.view')],
-    ['/admin/card-products', 'Card products', can('cards.configure')],
-    ['/admin/crypto', 'Crypto', can('crypto.view')],
-    ['/admin/support', 'Support' . ($openTickets ? " ($openTickets)" : ''), can('support.view')],
-    ['/admin/chats', 'Live chat' . ($unreadChats ? " ($unreadChats)" : ''), can('support.view')],
-    ['/admin/fees', 'Fees', can('reports.view')],
-    ['/admin/funds', 'Add funds', can('funds.approve') || can('funds.add') || can('funds.adjust')],
-    ['/admin/staff', 'Staff', can('staff.view')],
-    ['/admin/roles', 'Roles', can('roles.manage')],
-    ['/admin/audit', 'Audit log', can('audit.view')],
-    ['/admin/account-types', 'Account types', can('settings.view')],
-    ['/admin/templates', 'Templates', can('settings.view')],
-    ['/admin/integrations', 'Integrations', can('integrations.manage')],
-    ['/admin/settings', 'Settings', can('settings.view')],
-], fn ($i) => $i[2]) : [
-    ['/dashboard', 'Dashboard'],
-    ['/accounts', 'Accounts'],
-    ['/transfer', 'Transfers', setting('transfers_enabled') === '1'],
-    ['/transactions', 'Transactions'],
-    ['/cards', 'Cards', setting('cards_enabled') === '1'],
-    ['/crypto', 'Crypto', setting('crypto_enabled') === '1'],
-    ['/withdrawals', 'Withdrawals', setting('withdrawals_enabled') === '1'],
-    ['/add-funds', 'Add funds', setting('customer_add_funds_requests') === '1' || App\Services\GatewayPaymentService::available()],
-    ['/support', 'Support' . ($chatUnread ? " ($chatUnread)" : ''), setting('support_enabled') === '1' || setting('chat_enabled') === '1'],
-    ['/notifications', 'Notifications'],
-    ['/profile', 'Security'],
+// [href, label, icon, visible, badge count, section]
+$nav = $isStaff ? [
+    ['/admin', 'Overview', 'home', true, 0, 'Operations'],
+    ['/admin/customers', 'Customers', 'users', can('customers.view'), 0, 'Operations'],
+    ['/admin/accounts', 'Accounts', 'wallet', can('accounts.view'), 0, 'Operations'],
+    ['/admin/transactions', 'Transactions', 'list', can('transactions.view'), 0, 'Operations'],
+    ['/admin/withdrawals', 'Withdrawals', 'withdraw', can('funds.approve') || can('funds.withdraw'), 0, 'Operations'],
+    ['/admin/funds', 'Add funds', 'plus', can('funds.approve') || can('funds.add') || can('funds.adjust'), 0, 'Operations'],
+    ['/admin/cards', 'Cards', 'card', can('cards.view'), $pendingCards, 'Products'],
+    ['/admin/card-products', 'Card products', 'layers', can('cards.configure'), 0, 'Products'],
+    ['/admin/crypto', 'Crypto', 'coins', can('crypto.view'), 0, 'Products'],
+    ['/admin/fees', 'Fees', 'tag', can('reports.view'), 0, 'Products'],
+    ['/admin/support', 'Support', 'chat', can('support.view'), $openTickets, 'Customer care'],
+    ['/admin/chats', 'Live chat', 'mail', can('support.view'), $unreadChats, 'Customer care'],
+    ['/admin/staff', 'Staff', 'users', can('staff.view'), 0, 'Administration'],
+    ['/admin/roles', 'Roles', 'lock', can('roles.manage'), 0, 'Administration'],
+    ['/admin/audit', 'Audit log', 'file', can('audit.view'), 0, 'Administration'],
+    ['/admin/account-types', 'Account types', 'bank', can('settings.view'), 0, 'Administration'],
+    ['/admin/templates', 'Templates', 'mail', can('settings.view'), 0, 'Administration'],
+    ['/admin/integrations', 'Integrations', 'plug', can('integrations.manage'), 0, 'Administration'],
+    ['/admin/settings', 'Settings', 'settings', can('settings.view'), 0, 'Administration'],
+] : [
+    ['/dashboard', 'Dashboard', 'home', true, 0, ''],
+    ['/accounts', 'Accounts', 'wallet', true, 0, ''],
+    ['/transfer', 'Transfers', 'transfer', setting('transfers_enabled') === '1', 0, ''],
+    ['/transactions', 'Transactions', 'list', true, 0, ''],
+    ['/cards', 'Cards', 'card', setting('cards_enabled') === '1', 0, ''],
+    ['/crypto', 'Crypto', 'coins', setting('crypto_enabled') === '1', 0, ''],
+    ['/withdrawals', 'Withdrawals', 'withdraw', setting('withdrawals_enabled') === '1', 0, ''],
+    ['/add-funds', 'Add funds', 'plus', setting('customer_add_funds_requests') === '1' || App\Services\GatewayPaymentService::available(), 0, ''],
+    ['/support', 'Support', 'chat', setting('support_enabled') === '1' || setting('chat_enabled') === '1', $chatUnread, ''],
+    ['/notifications', 'Notifications', 'bell', true, $unread, ''],
+    ['/profile', 'Security', 'shield', true, 0, ''],
 ];
-$nav = array_filter($nav, fn ($i) => $i[2] ?? true);
+$nav = array_filter($nav, fn ($i) => $i[3]);
 $active = static function (string $href) use ($path): bool {
     return $href === $path || ($href !== '/admin' && str_starts_with($path, $href . '/'));
 };
@@ -62,7 +63,7 @@ $active = static function (string $href) use ($path): bool {
 <!doctype html>
 <html lang="en">
 <head><?php include APP_PATH . '/views/partials/head.php'; ?></head>
-<body class="app <?= $isStaff ? 'is-staff' : 'is-customer' ?>">
+<body class="app <?= $isStaff ? 'is-staff' : 'is-customer' ?>" data-currency-symbol="<?= e(setting('currency_symbol', '$')) ?>">
   <?php include APP_PATH . '/views/partials/sandbox.php'; ?>
   <header class="topbar">
     <button class="nav-toggle" type="button" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false" data-nav-toggle>
@@ -71,21 +72,23 @@ $active = static function (string $href) use ($path): bool {
     <?php include APP_PATH . '/views/partials/brand.php'; ?>
     <?php if ($isStaff): ?><span class="env-tag">Back office</span><?php endif; ?>
     <div class="topbar-right">
+      <?php include APP_PATH . '/views/partials/theme_toggle.php'; ?>
       <a class="icon-link" href="<?= e(url('notifications')) ?>" aria-label="Notifications">
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/></svg>
+        <?= icon('bell', 20) ?>
         <?php if ($unread): ?><span class="dot"><?= $unread > 9 ? '9+' : $unread ?></span><?php endif; ?>
       </a>
       <a class="user-chip" href="<?= e(url('profile')) ?>">
-        <span class="avatar"><?= e(mb_strtoupper(mb_substr($user['full_name'], 0, 1))) ?></span>
+        <span class="avatar"><?= e(mb_strtoupper(mb_substr($user['full_name'], 0, 1) . mb_substr((string) (explode(' ', trim($user['full_name']))[1] ?? ''), 0, 1))) ?></span>
         <span class="user-name"><?= e($user['full_name']) ?></span>
       </a>
-      <form method="post" action="<?= e(url('logout')) ?>"><?= csrf_field() ?><button class="btn btn-ghost btn-sm">Sign out</button></form>
+      <form method="post" action="<?= e(url('logout')) ?>"><?= csrf_field() ?><button class="icon-link" aria-label="Sign out" title="Sign out"><?= icon('logout', 20) ?></button></form>
     </div>
   </header>
   <div class="shell">
     <nav class="sidebar" id="sidebar" aria-label="Main">
-      <?php foreach ($nav as $item): ?>
-        <a href="<?= e(url($item[0])) ?>" class="<?= $active($item[0]) ? 'active' : '' ?>"><?= e($item[1]) ?></a>
+      <?php $section = null; foreach ($nav as [$href, $label, $ico, , $count, $sec]): ?>
+        <?php if ($sec !== '' && $sec !== $section): $section = $sec; ?><div class="nav-label"><?= e($sec) ?></div><?php endif; ?>
+        <a href="<?= e(url($href)) ?>" class="<?= $active($href) ? 'active' : '' ?>"<?= $active($href) ? ' aria-current="page"' : '' ?>><?= icon($ico) ?><span><?= e($label) ?></span><?php if ($count): ?><span class="count"><?= $count > 99 ? '99+' : (int) $count ?></span><?php endif; ?></a>
       <?php endforeach; ?>
       <?php if (!$isStaff): ?>
         <div class="sidebar-help">
