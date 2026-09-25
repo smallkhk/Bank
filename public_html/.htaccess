@@ -1,0 +1,15 @@
+Options -Indexes
+RewriteEngine On
+
+# Force HTTPS (uncomment once SSL is active on the domain)
+# RewriteCond %{HTTPS} off
+# RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Serve real files (assets) directly; route everything else to index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [QSA,L]
+
+<FilesMatch "\.(env|ini|log|sql|sh|bak)$">
+    Require all denied
+</FilesMatch>
