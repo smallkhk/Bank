@@ -12,7 +12,7 @@ use App\Services\TransferService;
 
 final class TransactionController extends Controller
 {
-    public const TYPES = ['deposit', 'withdrawal', 'transfer', 'fee', 'refund', 'adjustment', 'card', 'investment'];
+    public const TYPES = ['deposit', 'withdrawal', 'transfer', 'fee', 'refund', 'adjustment', 'card', 'investment', 'crypto'];
     public const STATUSES = ['pending', 'completed', 'failed', 'reversed', 'cancelled'];
 
     public function index(): void

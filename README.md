@@ -49,6 +49,17 @@ This is a closed-loop internet banking portal and internal ledger. It is written
 | **Authorisation** | `CardService::authorize()` checks, in order: card status, expiry, account status and restrictions, channel and international switches, daily, monthly and ATM limits, then available funds or credit. Approved payments post to the ledger against `SYS-CARDS` (plus any international fee). Declines are recorded and the customer is notified. Reversals and refunds give back the amount and the fee. A **simulator** on the admin card page stands in for a real processor. |
 | **Credit card accounts** | A dedicated account whose balance goes negative up to the credit limit; the ledger enforces the limit, and only interest and penalty fees may exceed it. Customers pay from their deposit accounts: full balance, minimum due, or another amount. The daily cron issues statements with a minimum payment and due date, charges **interest only when the previous statement wasn't paid in full**, charges a late fee **once** if the minimum is missed, and marks statements paid, minimum paid or overdue. Payments are matched to statements by ledger position rather than timestamp, so they are counted exactly. |
 
+### Phase 5: Crypto (simulated; no blockchain)
+
+| Area | Details |
+|---|---|
+| **Module** | **Off by default.** Turn it on in Settings → Cards & crypto. Customers must accept a risk notice (editable) before trading. Every screen is labelled "Simulated", and there are no deposit or withdrawal addresses anywhere. |
+| **Assets** | BTC, ETH, USDT or any custom asset, each with a symbol, name, decimal precision (0–8, fixed once created), price, trading fee, minimum trade and status (active, halted, inactive). Prices are set manually or moved by an optional random-walk simulator (`cron/crypto-prices.php`). Full price history is kept, which drives the 24h change and the chart. |
+| **Trading** | Buy by amount, sell by quantity or "sell all". A server-priced review step shows the price, quantity, fee and total; confirming checks the price hasn't changed since the review. Each trade posts balanced ledger entries against the bank's `SYS-CRYPTO` desk account, with fees going to `SYS-FEES`. Checks cover account ownership, restrictions, available balance, minimum and maximum trade size, and quantity held. Credit card accounts can't be used. |
+| **Maths** | Exact integer arithmetic: quantities are stored in the smallest unit (e.g. satoshis) and money in cents, with an overflow-safe multiply-divide, so no `bcmath` or `gmp` is needed. Rounding never charges more than the amount entered, and proceeds round down. |
+| **Portfolio** | Holdings, quantity, value, average cost (average-cost method, fees included), unrealised and realised profit/loss. `crypto_transactions` is the source of truth; holdings are a cache that the admin page reconciles against it. |
+| **Admin** | Asset management, manual prices, halting trading, customer exposure, trading desk balance, 30-day volume and fees, and a searchable trade blotter linked to the ledger. Permissions: `crypto.view` and `crypto.manage`. |
+
 Money is stored as integer minor units (cents) everywhere. Floats are never used.
 
 ## Architecture
@@ -63,7 +74,7 @@ app/
   views/            ← layouts, partials, customer/, admin/
 config/             ← config.php (not web accessible, gitignored)
 database/           ← schema.sql, migrations/, install.php
-cron/               ← scheduled jobs (monthly-fees.php, cards-daily.php)
+cron/               ← scheduled jobs (monthly-fees.php, cards-daily.php, crypto-prices.php)
 storage/            ← logs/, branding, attachments (outside web root)
 ```
 
@@ -86,6 +97,11 @@ storage/            ← logs/, branding, attachments (outside web root)
    ```
    (It charges the previous month. Running it again for the same month never charges twice.)
 
+   Optionally, the simulated crypto price feed (every 15 minutes):
+   ```
+   */15 * * * * /usr/local/bin/php /home/USER/bank/cron/crypto-prices.php
+   ```
+
    And the daily card job (statements, interest, late fees, expiry):
    ```
    10 1 * * * /usr/local/bin/php /home/USER/bank/cron/cards-daily.php
@@ -98,8 +114,9 @@ storage/            ← logs/, branding, attachments (outside web root)
 - **Payment/payout providers:** `FundingService` (deposits) and `WithdrawalService::approve()` (payouts)
 - **Fraud/risk:** `RiskService`
 - **Card processor / network:** replace the simulator with calls into `CardService::authorize()` / `reverse()`; swap `CardVault` for an HSM or tokenisation service before handling real cards (PCI DSS)
+- **Crypto:** replace `CryptoService::simulatePrices()` with a market-data feed; real custody or blockchain transfers need a licensed provider and compliance controls
 - **KYC:** `customers.kyc_status` and `customer_documents`
 
 ## Roadmap
 
-Phases 4–5 cover simulated investments and crypto. Phase 6 covers external integrations. The schema, permissions and service layer are designed so these modules can be added without reworking the core.
+Phase 4 (investments) was skipped at the owner's request. Phase 6 covers external integrations. The schema, permissions and service layer are designed so these modules can be added without reworking the core.

@@ -69,7 +69,12 @@ final class SettingsService
         // Cards
         'cards_enabled'         => '1',
         'credit_cards_enabled'  => '1',
-        'max_cards_per_customer'=> '5',      // maker-checker: approver must differ from requester
+        'max_cards_per_customer'=> '5',
+        'bank_country'          => 'US',
+        // Crypto (simulated)
+        'crypto_enabled'        => '0',
+        'crypto_max_trade'      => '100000000', // 1,000,000.00 per trade
+        'crypto_risk_text'      => "Crypto assets on this platform are SIMULATED. They are internal records, are not real cryptocurrency, cannot be sent to or received from a blockchain wallet, and exist only inside this platform. Prices are set by the bank and can move sharply. You may lose money you use to buy simulated assets.",      // maker-checker: approver must differ from requester
     ];
 
     public static function get(string $key, ?string $default = null): ?string

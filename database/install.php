@@ -86,6 +86,7 @@ $permissions = [
     'support.view' => 'View support', 'support.manage' => 'Manage support',
     'cards.view' => 'View cards', 'cards.issue' => 'Approve/issue & replace cards', 'cards.freeze' => 'Freeze, unfreeze & block cards',
     'cards.configure' => 'Configure card products & simulate card transactions',
+    'crypto.view' => 'View crypto trades & holdings', 'crypto.manage' => 'Manage crypto assets & prices',
 ];
 $newPermissions = [];
 foreach ($permissions as $slug => $desc) {
@@ -100,12 +101,12 @@ $roles = [
     'director' => ['Director', 'High-level operational access', [
         'customers.view', 'customers.view_all', 'accounts.view', 'transactions.view', 'transactions.approve',
         'funds.approve', 'reports.view', 'audit.view', 'staff.view', 'accounts.assign_manager', 'accounts.freeze', 'accounts.lock',
-        'cards.view', 'cards.issue', 'cards.freeze',
+        'cards.view', 'cards.issue', 'cards.freeze', 'crypto.view',
     ]],
     'manager' => ['Account Manager', 'Manages assigned customers', [
         'customers.view', 'customers.edit', 'accounts.view', 'accounts.create', 'transactions.view',
         'funds.add', 'funds.withdraw', 'accounts.freeze', 'accounts.limit', 'support.view',
-        'cards.view', 'cards.freeze',
+        'cards.view', 'cards.freeze', 'crypto.view',
     ]],
     'assistant' => ['Assistant', 'Limited staff role', ['customers.view', 'accounts.view', 'transactions.view', 'funds.add', 'support.view', 'cards.view']],
     'support' => ['Support Agent', 'Customer support, no financial permissions', [
@@ -143,7 +144,7 @@ foreach (App\Services\NotificationService::DEFAULTS as $event => [$name, $subjec
 
 echo "Creating internal system (GL) accounts...\n";
 $currency = SettingsService::get('currency', 'USD');
-foreach ([LedgerService::SYS_FUNDING, LedgerService::SYS_SETTLEMENT, LedgerService::SYS_FEES, LedgerService::SYS_ADJUST, LedgerService::SYS_CARDS, LedgerService::SYS_INTEREST] as $code) {
+foreach ([LedgerService::SYS_FUNDING, LedgerService::SYS_SETTLEMENT, LedgerService::SYS_FEES, LedgerService::SYS_ADJUST, LedgerService::SYS_CARDS, LedgerService::SYS_INTEREST, LedgerService::SYS_CRYPTO] as $code) {
     Db::query('INSERT IGNORE INTO accounts (account_number, currency, is_system, system_code, nickname) VALUES (?, ?, 1, ?, ?)',
         [$code, $currency, $code, ucwords(strtolower(str_replace(['SYS-', '-'], ['', ' '], $code)))]);
 }

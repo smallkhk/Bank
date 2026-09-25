@@ -8,6 +8,7 @@
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 *, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; font: 15px/1.5 var(--font); color: var(--text); background: var(--bg); }
 a { color: var(--secondary); text-decoration: none; }
@@ -274,3 +275,22 @@ form.inline { display: inline; }
 .grid-3 { grid-template-columns: 1fr; } .span-3 { grid-column: 1 / -1; }
 @media (min-width: 700px) { .grid-3 { grid-template-columns: repeat(3, 1fr); } }
 @media (min-width: 1000px) { .card-layout { grid-template-columns: minmax(300px, 400px) 1fr; } }
+
+/* Phase 5 — crypto */
+.sim-banner { background: #fff8e6; border: 1px solid #f0dc9e; color: #6b4a00; border-radius: 10px; padding: .7rem 1rem; margin-bottom: 1.25rem; font-size: .9rem; }
+.asset-id { display: flex; gap: .75rem; align-items: center; }
+.asset-icon { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: color-mix(in srgb, var(--accent) 15%, #fff); color: var(--accent); }
+.price-head { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: baseline; margin-bottom: .75rem; }
+.price-big { font-size: 1.8rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+.spark { width: 100%; height: 150px; display: block; background: #fafbfd; border-radius: 10px; }
+.spark.up polyline { stroke: var(--pos); } .spark.down polyline { stroke: var(--neg); }
+.tabs.seg { border: 1px solid var(--border); border-radius: 10px; padding: 3px; display: inline-flex; gap: 0; }
+.tabs.seg a { border: 0; border-radius: 8px; padding: .45rem 1.4rem; }
+.tabs.seg a.active { background: var(--primary); color: #fff; }
+.quote { display: grid; grid-template-columns: auto 1fr; gap: .35rem 1rem; background: #f7f9fb; border: 1px solid var(--border); border-radius: 10px; padding: .9rem 1rem; }
+.quote dt { color: var(--muted); } .quote dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.quote dd:last-of-type { font-weight: 700; }
+.quote .span-all { grid-column: 1 / -1; margin: 0; }
+.inline-check { display: inline-flex !important; margin-left: .5rem; font-weight: 500; }
+.narrow-wide { max-width: 760px; }
+@media (min-width: 1000px) { .two-col.wide-left { grid-template-columns: 3fr 2fr; } }

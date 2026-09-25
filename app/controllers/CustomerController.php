@@ -96,7 +96,7 @@ final class CustomerController extends Controller
             }
         }
         $type = input('type');
-        if (in_array($type, ['deposit', 'withdrawal', 'transfer', 'fee', 'refund', 'adjustment'], true)) {
+        if (in_array($type, ['deposit', 'withdrawal', 'transfer', 'fee', 'refund', 'adjustment', 'card', 'crypto'], true)) {
             $f['type'] = $type;
         }
         if (($q = input('q')) !== '') {

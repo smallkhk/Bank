@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 use App\Controllers\AuthController;
 use App\Controllers\CardController;
+use App\Controllers\CryptoController;
 use App\Controllers\CustomerController;
 use App\Controllers\SecurityController;
 use App\Controllers\SupportController;
@@ -61,6 +62,13 @@ $router->post('/cards/{id}/controls', [CardController::class, 'controls'], $c);
 $router->post('/cards/{id}/report', [CardController::class, 'reportLost'], $c);
 $router->post('/cards/{id}/reveal', [CardController::class, 'reveal'], $c);
 $router->post('/cards/{id}/pay', [CardController::class, 'pay'], $c);
+
+// Crypto (customer, simulated)
+$router->get('/crypto', [CryptoController::class, 'index'], $c);
+$router->post('/crypto/acknowledge', [CryptoController::class, 'acknowledge'], $c);
+$router->get('/crypto/{symbol}', [CryptoController::class, 'show'], $c);
+$router->post('/crypto/{symbol}/quote', [CryptoController::class, 'quote'], $c);
+$router->post('/crypto/{symbol}', [CryptoController::class, 'trade'], $c);
 
 // Support & chat (customer)
 $router->get('/support', [SupportController::class, 'index'], $c);
@@ -153,3 +161,9 @@ $router->post('/admin/cards/{id}/simulate', [Admin\CardController::class, 'simul
 $router->post('/admin/cards/{id}/transactions/{tx}/reverse', [Admin\CardController::class, 'reverse'], ['perm:cards.configure']);
 $router->get('/admin/card-products', [Admin\CardProductController::class, 'index'], ['perm:cards.configure']);
 $router->post('/admin/card-products', [Admin\CardProductController::class, 'save'], ['perm:cards.configure']);
+
+$router->get('/admin/crypto', [Admin\CryptoController::class, 'index'], ['perm:crypto.view']);
+$router->get('/admin/crypto/trades', [Admin\CryptoController::class, 'trades'], ['perm:crypto.view']);
+$router->post('/admin/crypto', [Admin\CryptoController::class, 'save'], ['perm:crypto.manage']);
+$router->post('/admin/crypto/simulate', [Admin\CryptoController::class, 'simulate'], ['perm:crypto.manage']);
+$router->post('/admin/crypto/{id}/price', [Admin\CryptoController::class, 'price'], ['perm:crypto.manage']);

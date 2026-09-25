@@ -14,24 +14,25 @@ final class SettingsController extends Controller
     private const MONEY_KEYS = [
         'transfer_fee_fixed', 'withdrawal_fee_fixed', 'transfer_approval_threshold',
         'default_daily_transfer_limit', 'default_daily_withdrawal_limit', 'default_monthly_limit',
-        'monthly_account_fee', 'monthly_fee_min_balance_waiver',
+        'monthly_account_fee', 'monthly_fee_min_balance_waiver', 'crypto_max_trade',
     ];
     private const BOOL_KEYS = [
         'maintenance_mode', 'sandbox_notice', 'registration_enabled', 'registration_auto_activate',
         'add_funds_requires_approval', 'customer_add_funds_requests', 'confirm_password_for_transfers', 'allow_self_approval',
         'require_2fa_staff', 'require_email_verification', 'chat_enabled',
+        'cards_enabled', 'credit_cards_enabled', 'crypto_enabled',
     ];
     private const INT_KEYS = [
         'account_number_length' => [8, 20], 'transfer_fee_bps' => [0, 10000], 'password_min_length' => [8, 64],
         'login_max_attempts' => [3, 20], 'login_lockout_minutes' => [1, 1440], 'session_idle_minutes' => [5, 480],
-        'support_sla_hours' => [1, 720],
+        'support_sla_hours' => [1, 720], 'max_cards_per_customer' => [1, 20],
     ];
 
     public function index(): void
     {
         $this->view('admin/settings', [
             'title' => 'Settings', 's' => SettingsService::all(), 'moneyKeys' => self::MONEY_KEYS,
-            'tab' => in_array(input('tab'), ['general', 'accounts', 'transactions', 'security', 'support', 'legal'], true) ? input('tab') : 'general',
+            'tab' => in_array(input('tab'), ['general', 'accounts', 'transactions', 'security', 'support', 'modules', 'legal'], true) ? input('tab') : 'general',
         ]);
     }
 
@@ -67,6 +68,8 @@ final class SettingsController extends Controller
                 if ($value === '') {
                     continue;
                 }
+            } elseif ($key === 'bank_country') {
+                $value = strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $value), 0, 2)) ?: 'US';
             } elseif ($key === 'currency') {
                 $value = strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $value), 0, 3));
             } elseif (in_array($key, ['account_number_prefix', 'account_number_branch'], true)) {

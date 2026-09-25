@@ -1,5 +1,5 @@
 <?php
-$tabs = ['general' => 'General & branding', 'accounts' => 'Accounts', 'transactions' => 'Transactions', 'security' => 'Security', 'support' => 'Support', 'legal' => 'Legal & messages'];
+$tabs = ['general' => 'General & branding', 'accounts' => 'Accounts', 'transactions' => 'Transactions', 'security' => 'Security', 'support' => 'Support', 'modules' => 'Cards & crypto', 'legal' => 'Legal & messages'];
 $ro = !can('settings.manage');
 $money = fn (string $k) => App\Services\Money::toDecimal((int) $s[$k]);
 $text = function (string $k, string $label, string $type = 'text', string $hint = '') use ($s, $ro) {
@@ -50,6 +50,12 @@ $bool = function (string $k, string $label) use ($s, $ro) {
     <?php $bool('chat_enabled', 'Enable live chat for customers'); ?>
     <?php $text('support_sla_hours', 'Response target (SLA, hours)', 'number', 'Tickets awaiting a staff reply longer than this are flagged overdue.'); ?>
     <label class="span-2">Ticket categories (one per line) <textarea name="s[support_categories]" rows="7" <?= $ro ? 'disabled' : '' ?>><?= e($s['support_categories']) ?></textarea></label>
+  <?php elseif ($tab === 'modules'): ?>
+    <?php $bool('cards_enabled', 'Cards module enabled'); $bool('credit_cards_enabled', 'Credit cards available'); ?>
+    <?php $text('max_cards_per_customer', 'Maximum open cards per customer', 'number'); $text('bank_country', 'Home country (ISO code, for international card use)'); ?>
+    <?php $bool('crypto_enabled', 'Crypto module (simulated assets) enabled for customers'); ?>
+    <label>Maximum value per crypto trade <input name="s[crypto_max_trade]" value="<?= e($money('crypto_max_trade')) ?>" <?= $ro ? 'disabled' : '' ?>></label>
+    <label class="span-2">Crypto risk notice (customers must accept before trading) <textarea name="s[crypto_risk_text]" rows="5" <?= $ro ? 'disabled' : '' ?>><?= e($s['crypto_risk_text']) ?></textarea></label>
   <?php else: ?>
     <?php $text('login_message', 'Sign-in page message'); $text('footer_text', 'Footer text'); ?>
     <label class="span-2">Maintenance message <input name="s[maintenance_message]" value="<?= e($s['maintenance_message']) ?>" <?= $ro ? 'disabled' : '' ?>></label>

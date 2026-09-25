@@ -157,3 +157,44 @@
     }
   });
 })();
+
+// Crypto trade form: Buy/Sell toggle, server-priced review step, confirm at the reviewed price.
+(function () {
+  'use strict';
+  document.addEventListener('DOMContentLoaded', function () {
+    var form = document.querySelector('[data-trade-form]');
+    if (!form) return;
+    var side = form.querySelector('input[name=side]'), expected = form.querySelector('input[name=expected_price]');
+    var box = form.querySelector('[data-quote-box]'), review = form.querySelector('[data-review]'), confirmBtn = form.querySelector('[data-confirm-btn]');
+    var csrf = form.querySelector('input[name=_csrf]').value;
+    function reset() { box.hidden = true; confirmBtn.hidden = true; expected.value = ''; }
+    function setSide(s) {
+      side.value = s;
+      document.querySelectorAll('[data-seg] a').forEach(function (a) { a.classList.toggle('active', a.getAttribute('data-side') === s); });
+      form.querySelectorAll('[data-when]').forEach(function (el) { el.hidden = el.getAttribute('data-when') !== s; });
+      confirmBtn.textContent = s === 'buy' ? 'Confirm buy' : 'Confirm sell';
+      reset();
+    }
+    document.querySelectorAll('[data-seg] a').forEach(function (a) {
+      a.addEventListener('click', function (e) { e.preventDefault(); setSide(a.getAttribute('data-side')); });
+    });
+    form.addEventListener('input', reset);
+    review.addEventListener('click', function () {
+      review.disabled = true;
+      fetch(form.getAttribute('data-quote'), { method: 'POST', body: new FormData(form), credentials: 'same-origin', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': csrf } })
+        .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || 'Could not price this order'); return d; }); })
+        .then(function (q) {
+          box.textContent = '';
+          var rows = [['Price', q.price_fmt + ' per unit'], [q.side === 'buy' ? 'You receive' : 'You sell', q.quantity_fmt],
+                      ['Value', q.gross_fmt], ['Fee', q.fee_fmt], [q.side === 'buy' ? 'Total to pay' : 'You receive', q.net_fmt]];
+          rows.forEach(function (r) { var dt = document.createElement('dt'); dt.textContent = r[0]; var dd = document.createElement('dd'); dd.textContent = r[1]; box.appendChild(dt); box.appendChild(dd); });
+          box.hidden = false;
+          if (q.below_min) { var p = document.createElement('p'); p.className = 'neg small span-all'; p.textContent = 'Below the minimum trade size.'; box.appendChild(p); return; }
+          expected.value = q.price; confirmBtn.hidden = false;
+        })
+        .catch(function (err) { alert(err.message); })
+        .then(function () { review.disabled = false; });
+    });
+    setSide('buy');
+  });
+})();
