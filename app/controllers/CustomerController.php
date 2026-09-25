@@ -211,8 +211,17 @@ final class CustomerController extends Controller
         $this->view('customer/transaction', ['title' => 'Transaction ' . $tx['reference'], 'tx' => $tx, 'myIds' => $ids]);
     }
 
+    private function requireFeature(string $key, string $name): void
+    {
+        if (setting($key) !== '1') {
+            flash('error', $name . ' are not available at the moment.');
+            redirect('/dashboard');
+        }
+    }
+
     public function transferForm(): void
     {
+        $this->requireFeature('transfers_enabled', 'Transfers');
         $this->view('customer/transfer', [
             'title' => 'Transfer money', 'accounts' => $this->depositAccounts(),
             'feeFixed' => (int) setting('transfer_fee_fixed', '0'), 'feeBps' => (int) setting('transfer_fee_bps', '0'),
@@ -221,6 +230,7 @@ final class CustomerController extends Controller
 
     public function transfer(): void
     {
+        $this->requireFeature('transfers_enabled', 'Transfers');
         $from = $this->ownAccount((int) input('from_account'));
         $amount = Money::parse(input('amount'));
         if ($amount === null || $amount <= 0) {
@@ -248,6 +258,7 @@ final class CustomerController extends Controller
 
     public function withdrawals(): void
     {
+        $this->requireFeature('withdrawals_enabled', 'Withdrawals');
         $ids = $this->accountIds();
         $in = implode(',', array_fill(0, count($ids), '?'));
         $this->view('customer/withdrawals', [
@@ -258,6 +269,7 @@ final class CustomerController extends Controller
 
     public function requestWithdrawal(): void
     {
+        $this->requireFeature('withdrawals_enabled', 'Withdrawals');
         $acc = $this->ownAccount((int) input('account_id'));
         $amount = Money::parse(input('amount'));
         if ($amount === null || $amount <= 0) {

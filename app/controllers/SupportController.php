@@ -13,6 +13,17 @@ use App\Services\SupportService;
 
 final class SupportController extends Controller
 {
+    private function requireTickets(): void
+    {
+        if (setting('support_enabled') !== '1') {
+            if (setting('chat_enabled') === '1') {
+                redirect('/chat');
+            }
+            flash('error', 'Online support is not available at the moment.');
+            redirect('/dashboard');
+        }
+    }
+
     private function cid(): int
     {
         return Auth::customerId() ?? $this->forbidden();
@@ -26,6 +37,7 @@ final class SupportController extends Controller
 
     public function index(): void
     {
+        $this->requireTickets();
         $this->view('customer/support', [
             'title' => 'Support',
             'tickets' => Db::all('SELECT * FROM support_tickets WHERE customer_id = ? ORDER BY updated_at DESC LIMIT 100', [$this->cid()]),
@@ -36,6 +48,7 @@ final class SupportController extends Controller
 
     public function store(): void
     {
+        $this->requireTickets();
         $id = $this->attempt(function () {
             $att = AttachmentService::fromUpload('attachment');
             return SupportService::open($this->cid(), input('category'), input('subject'), input('message'), $att, (int) Auth::id());
@@ -47,12 +60,14 @@ final class SupportController extends Controller
 
     public function show(string $id): void
     {
+        $this->requireTickets();
         $t = $this->ownTicket((int) $id);
         $this->view('customer/ticket', ['title' => $t['subject'], 't' => $t, 'messages' => SupportService::messages((int) $t['id'], false)]);
     }
 
     public function reply(string $id): void
     {
+        $this->requireTickets();
         $t = $this->ownTicket((int) $id);
         if ($t['status'] === 'closed') {
             flash('error', 'This request is closed. Please open a new one.');
@@ -66,6 +81,7 @@ final class SupportController extends Controller
 
     public function close(string $id): void
     {
+        $this->requireTickets();
         $t = $this->ownTicket((int) $id);
         SupportService::setStatus($t, 'closed', 'Closed by customer');
         flash('success', 'Request closed.');

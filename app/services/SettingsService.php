@@ -66,6 +66,16 @@ final class SettingsService
         'support_categories'    => "Account\nTransfers\nWithdrawals\nCards\nTechnical\nComplaint\nOther",
         'support_sla_hours'     => '24',
         'chat_enabled'          => '1',
+        'support_enabled'       => '1',
+        // Feature switches
+        'transfers_enabled'     => '1',
+        'withdrawals_enabled'   => '1',
+        'risk_max_transfers_10min' => '10',
+        // Email (empty values fall back to config/config.php)
+        'mail_enabled'          => '',
+        'mail_driver'           => '',
+        'mail_from_email'       => '',
+        'mail_from_name'        => '',
         // Cards
         'cards_enabled'         => '1',
         'credit_cards_enabled'  => '1',

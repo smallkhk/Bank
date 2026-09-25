@@ -3,7 +3,7 @@
   <div><a class="back" href="<?= e(url('accounts')) ?>">← Accounts</a>
     <h1><?= e($a['nickname'] ?: $a['type_name']) ?> <?= status_badge($a['status']) ?></h1>
     <p class="muted mono"><?= e($a['account_number']) ?> · <?= e($a['currency']) ?></p></div>
-  <div class="actions no-print"><a class="btn btn-primary" href="<?= e(url('transfer?from=' . $a['id'])) ?>">Transfer</a></div>
+  <?php if (setting('transfers_enabled') === '1' && (int) $a['credit_limit'] === 0): ?><div class="actions no-print"><a class="btn btn-primary" href="<?= e(url('transfer?from=' . $a['id'])) ?>">Transfer</a></div><?php endif; ?>
 </div>
 
 <div class="stat-grid">

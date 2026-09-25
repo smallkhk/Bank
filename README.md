@@ -60,6 +60,23 @@ This is a closed-loop internet banking portal and internal ledger. It is written
 | **Portfolio** | Holdings, quantity, value, average cost (average-cost method, fees included), unrealised and realised profit/loss. `crypto_transactions` is the source of truth; holdings are a cache that the admin page reconciles against it. |
 | **Admin** | Asset management, manual prices, halting trading, customer exposure, trading desk balance, 30-day volume and fees, and a searchable trade blotter linked to the ledger. Permissions: `crypto.view` and `crypto.manage`. |
 
+### Admin settings
+
+Everything below is configured in the back office under **Settings**. Nothing needs a file edit except database credentials and `app.key`.
+
+| Tab | What you control |
+|---|---|
+| General & branding | Name, logo, favicon, colours, currency, contacts, the demonstration banner |
+| **Features** | Switch on or off: account opening, auto-activation, email verification, maintenance mode, transfers, withdrawals, add-funds requests, transfer password confirmation, cards, credit cards, crypto (with trade cap and risk notice), support tickets, live chat |
+| Accounts | Account number format, default account type, global limits |
+| Transactions | Fees, approval threshold, maker-checker, monthly fee and waiver, fraud velocity limit |
+| Security | Password policy, lockout, session timeout, staff two-step verification |
+| **Email** | On/off, sending method (server mail or log only), sender address and name, test email |
+| Support | Response-time target, ticket categories |
+| Legal & messages | Terms, privacy, sign-in message, footer, maintenance message |
+
+Other admin pages cover account types, card products, crypto assets, notification templates, roles and permissions.
+
 Money is stored as integer minor units (cents) everywhere. Floats are never used.
 
 ## Architecture

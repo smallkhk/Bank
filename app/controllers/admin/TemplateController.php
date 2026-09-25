@@ -15,8 +15,8 @@ final class TemplateController extends Controller
         $this->view('admin/templates', [
             'title' => 'Notification templates',
             'templates' => Db::all('SELECT * FROM notification_templates ORDER BY name'),
-            'mailEnabled' => (bool) config('mail.enabled'),
-            'mailDriver' => (string) config('mail.driver', 'log'),
+            'mailEnabled' => \App\Services\Mailer::enabled(),
+            'mailDriver' => \App\Services\Mailer::driver(),
         ]);
     }
 

@@ -21,18 +21,20 @@ final class SettingsController extends Controller
         'add_funds_requires_approval', 'customer_add_funds_requests', 'confirm_password_for_transfers', 'allow_self_approval',
         'require_2fa_staff', 'require_email_verification', 'chat_enabled',
         'cards_enabled', 'credit_cards_enabled', 'crypto_enabled',
+        'transfers_enabled', 'withdrawals_enabled', 'support_enabled', 'mail_enabled',
     ];
     private const INT_KEYS = [
         'account_number_length' => [8, 20], 'transfer_fee_bps' => [0, 10000], 'password_min_length' => [8, 64],
         'login_max_attempts' => [3, 20], 'login_lockout_minutes' => [1, 1440], 'session_idle_minutes' => [5, 480],
         'support_sla_hours' => [1, 720], 'max_cards_per_customer' => [1, 20],
+        'risk_max_transfers_10min' => [0, 100],
     ];
 
     public function index(): void
     {
         $this->view('admin/settings', [
             'title' => 'Settings', 's' => SettingsService::all(), 'moneyKeys' => self::MONEY_KEYS,
-            'tab' => in_array(input('tab'), ['general', 'accounts', 'transactions', 'security', 'support', 'modules', 'legal'], true) ? input('tab') : 'general',
+            'tab' => in_array(input('tab'), ['general', 'features', 'accounts', 'transactions', 'security', 'email', 'support', 'legal'], true) ? input('tab') : 'general',
         ]);
     }
 
@@ -67,6 +69,13 @@ final class SettingsController extends Controller
                 $value = implode("\n", array_slice(array_unique(array_filter(array_map(fn ($l) => mb_substr(trim($l), 0, 60), preg_split('/\R/', $value)))), 0, 30));
                 if ($value === '') {
                     continue;
+                }
+            } elseif ($key === 'mail_driver') {
+                $value = $value === 'mail' ? 'mail' : 'log';
+            } elseif ($key === 'mail_from_email') {
+                if ($value !== '' && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                    flash('error', 'Enter a valid sender email address.');
+                    redirect($back);
                 }
             } elseif ($key === 'bank_country') {
                 $value = strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $value), 0, 2)) ?: 'US';
@@ -103,6 +112,21 @@ final class SettingsController extends Controller
         }
         flash('success', $changes ? 'Settings saved.' : 'No changes.');
         redirect($back);
+    }
+
+    public function testEmail(): void
+    {
+        $to = (string) \App\Core\Auth::user()['email'];
+        if (!\App\Services\Mailer::enabled()) {
+            flash('error', 'Email delivery is turned off. Enable it above first.');
+            redirect('/admin/settings?tab=email');
+        }
+        $ok = \App\Services\Mailer::send($to, 'Test email from ' . bank_name(), "This is a test message.\n\nIf you received it, email delivery is working.");
+        AuditService::log('settings.test_email', 'settings', 'email', null, ['to' => $to, 'ok' => $ok]);
+        flash($ok ? 'success' : 'error', $ok
+            ? 'Test email sent to ' . $to . (\App\Services\Mailer::driver() === 'log' ? ' (written to storage/logs/mail.log — switch the method to "Server mail" to really send).' : '.')
+            : 'The server refused to send the email. Check that PHP mail() is enabled on your hosting, or ask your host.');
+        redirect('/admin/settings?tab=email');
     }
 
     /** Branding images are stored outside the web root and served through /branding/{kind}. */

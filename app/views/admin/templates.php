@@ -1,6 +1,6 @@
 <div class="page-head"><h1>Notification templates</h1>
   <p class="muted">Placeholders like <code>{{name}}</code>, <code>{{amount}}</code>, <code>{{account}}</code>, <code>{{reference}}</code>, <code>{{bank_name}}</code> are filled in automatically.
-  Email delivery: <?= $mailEnabled ? '<span class="badge badge-success">enabled (' . e($mailDriver) . ')</span>' : '<span class="badge badge-muted">disabled in config</span>' ?></p></div>
+  Email delivery: <?= $mailEnabled ? '<span class="badge badge-success">enabled (' . e($mailDriver) . ')</span>' : '<span class="badge badge-muted">disabled — see Settings → Email</span>' ?></p></div>
 <?php foreach ($templates as $t): preg_match_all('/\{\{\s*(\w+)\s*\}\}/', App\Services\NotificationService::DEFAULTS[$t['event']][2] ?? '', $ph); ?>
 <section class="card" id="t<?= (int) $t['id'] ?>">
   <div class="card-head"><h2><?= e($t['name']) ?> <span class="muted small mono"><?= e($t['event']) ?></span></h2>

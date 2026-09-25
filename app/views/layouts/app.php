@@ -43,13 +43,13 @@ $nav = $isStaff ? array_filter([
 ], fn ($i) => $i[2]) : [
     ['/dashboard', 'Dashboard'],
     ['/accounts', 'Accounts'],
-    ['/transfer', 'Transfers'],
+    ['/transfer', 'Transfers', setting('transfers_enabled') === '1'],
     ['/transactions', 'Transactions'],
     ['/cards', 'Cards', setting('cards_enabled') === '1'],
     ['/crypto', 'Crypto', setting('crypto_enabled') === '1'],
-    ['/withdrawals', 'Withdrawals'],
-    ['/add-funds', 'Add funds'],
-    ['/support', 'Support' . ($chatUnread ? " ($chatUnread)" : '')],
+    ['/withdrawals', 'Withdrawals', setting('withdrawals_enabled') === '1'],
+    ['/add-funds', 'Add funds', setting('customer_add_funds_requests') === '1'],
+    ['/support', 'Support' . ($chatUnread ? " ($chatUnread)" : ''), setting('support_enabled') === '1' || setting('chat_enabled') === '1'],
     ['/notifications', 'Notifications'],
     ['/profile', 'Security'],
 ];

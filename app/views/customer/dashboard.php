@@ -6,13 +6,14 @@
 <div class="stat-grid">
   <div class="stat stat-primary"><span>Total balance</span><strong><?= e(money($total)) ?></strong><small><?= count($accounts) ?> account<?= count($accounts) === 1 ? '' : 's' ?></small></div>
   <div class="stat"><span>Available balance</span><strong><?= e(money($available)) ?></strong><small><?= $total !== $available ? e(money($total - $available)) . ' on hold' : 'Nothing on hold' ?></small></div>
-  <div class="stat"><span>Pending withdrawals</span><strong><?= (int) $pendingWithdrawals ?></strong><small><a href="<?= e(url('withdrawals')) ?>">View requests</a></small></div>
+  <?php if (setting('withdrawals_enabled') === '1'): ?><div class="stat"><span>Pending withdrawals</span><strong><?= (int) $pendingWithdrawals ?></strong><small><a href="<?= e(url('withdrawals')) ?>">View requests</a></small></div><?php endif; ?>
 </div>
 
 <section class="quick-actions" aria-label="Quick actions">
-  <a href="<?= e(url('transfer')) ?>" class="qa"><span class="qa-icon">⇄</span>Transfer</a>
-  <a href="<?= e(url('add-funds')) ?>" class="qa"><span class="qa-icon">＋</span>Add funds</a>
-  <a href="<?= e(url('withdrawals')) ?>" class="qa"><span class="qa-icon">↓</span>Withdraw</a>
+  <?php if (setting('transfers_enabled') === '1'): ?><a href="<?= e(url('transfer')) ?>" class="qa"><span class="qa-icon">⇄</span>Transfer</a><?php endif; ?>
+  <?php if (setting('customer_add_funds_requests') === '1'): ?><a href="<?= e(url('add-funds')) ?>" class="qa"><span class="qa-icon">＋</span>Add funds</a><?php endif; ?>
+  <?php if (setting('withdrawals_enabled') === '1'): ?><a href="<?= e(url('withdrawals')) ?>" class="qa"><span class="qa-icon">↓</span>Withdraw</a><?php endif; ?>
+  <?php if (setting('cards_enabled') === '1'): ?><a href="<?= e(url('cards')) ?>" class="qa"><span class="qa-icon">▭</span>Cards</a><?php endif; ?>
   <a href="<?= e(url('transactions')) ?>" class="qa"><span class="qa-icon">≡</span>Statements</a>
 </section>
 

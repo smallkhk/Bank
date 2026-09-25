@@ -129,6 +129,7 @@ $router->post('/admin/roles/{id}', [Admin\RoleController::class, 'update'], ['pe
 
 $router->get('/admin/settings', [Admin\SettingsController::class, 'index'], ['perm:settings.view']);
 $router->post('/admin/settings', [Admin\SettingsController::class, 'update'], ['perm:settings.manage']);
+$router->post('/admin/settings/test-email', [Admin\SettingsController::class, 'testEmail'], ['perm:settings.manage']);
 $router->get('/branding/{kind}', [Admin\SettingsController::class, 'brandingFile']);
 
 $router->get('/admin/support', [Admin\SupportController::class, 'index'], ['perm:support.view']);
