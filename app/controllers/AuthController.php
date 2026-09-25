@@ -8,6 +8,7 @@ use App\Core\Db;
 use App\Services\AccountService;
 use App\Services\AuditService;
 use App\Services\NotificationService;
+use App\Services\TokenService;
 
 final class AuthController extends Controller
 {
@@ -30,9 +31,38 @@ final class AuthController extends Controller
         if (!$result['ok']) {
             remember_input();
             flash('error', $result['error']);
+            if (!empty($result['unverified'])) {
+                $_SESSION['show_resend'] = true;
+            }
             redirect('/login');
         }
         clear_old();
+        if (!empty($result['twofa'])) {
+            redirect('/login/2fa');
+        }
+        $this->afterLogin();
+    }
+
+    public function showTwoFactor(): void
+    {
+        if (empty($_SESSION['2fa_pending'])) {
+            redirect('/login');
+        }
+        $this->view('auth/twofa', ['title' => 'Verification code'], 'public');
+    }
+
+    public function twoFactor(): void
+    {
+        $r = Auth::completeTwoFactor(input('code'));
+        if (!$r['ok']) {
+            flash('error', $r['error']);
+            redirect(!empty($r['restart']) ? '/login' : '/login/2fa');
+        }
+        $this->afterLogin();
+    }
+
+    private function afterLogin(): never
+    {
         if (!Auth::isStaff() && setting('maintenance_mode') === '1') {
             Auth::logout();
             flash('error', setting('maintenance_message'));
@@ -103,7 +133,7 @@ final class AuthController extends Controller
         }
 
         $autoActivate = setting('registration_auto_activate') === '1';
-        Db::transaction(function () use ($d, $password, $autoActivate) {
+        $uid = Db::transaction(function () use ($d, $password, $autoActivate) {
             $uid = Db::insert('users', [
                 'user_type' => 'customer', 'username' => $d['username'], 'email' => $d['email'],
                 'phone' => $d['phone'] ?: null, 'full_name' => $d['full_name'],
@@ -120,12 +150,106 @@ final class AuthController extends Controller
             if ($autoActivate) {
                 AccountService::open($cid, (string) setting('default_account_type', 'checking'));
             }
-            NotificationService::notify($uid, 'Welcome to ' . bank_name(), 'Your online banking profile has been created.');
+            NotificationService::event($uid, 'welcome');
+            return $uid;
         });
+        self::sendVerification((int) $uid);
         clear_old();
         flash('success', $autoActivate
             ? 'Your profile has been created. You can now sign in.'
             : 'Thank you for registering. Your profile will be reviewed by the bank and you will be able to sign in once it is activated.');
+        redirect('/login');
+    }
+
+    public static function sendVerification(int $uid): void
+    {
+        $token = TokenService::issue($uid, 'email_verify', 48 * 60);
+        NotificationService::event($uid, 'email_verify', ['link' => rtrim((string) config('app.url'), '/') . url('verify-email/' . $token)]);
+    }
+
+    public function verifyEmail(string $token): void
+    {
+        $uid = TokenService::consume($token, 'email_verify');
+        if ($uid === null) {
+            flash('error', 'This verification link is invalid or has expired.');
+            redirect('/login');
+        }
+        Db::update('users', ['email_verified_at' => now()], 'id = ? AND email_verified_at IS NULL', [$uid]);
+        AuditService::log('security.email_verified', 'user', $uid, null, null, null, $uid);
+        flash('success', 'Thank you — your email address is verified.');
+        redirect(Auth::check() ? '/profile' : '/login');
+    }
+
+    public function resendVerification(): void
+    {
+        $uid = (int) ($_SESSION['verify_uid'] ?? 0);
+        unset($_SESSION['verify_uid'], $_SESSION['show_resend']);
+        if ($uid && !Db::value('SELECT email_verified_at FROM users WHERE id = ?', [$uid])) {
+            self::sendVerification($uid);
+        }
+        flash('success', 'If your email still needs verifying, we have sent a new link.');
+        redirect('/login');
+    }
+
+    public function showForgot(): void
+    {
+        $this->view('auth/forgot', ['title' => 'Reset password'], 'public');
+    }
+
+    public function forgot(): void
+    {
+        $email = strtolower(input('email'));
+        $ip = client_ip();
+        $recent = (int) Db::value("SELECT COUNT(*) FROM login_attempts WHERE (identifier = ? OR ip_address = ?) AND identifier LIKE 'reset:%'
+                                     AND created_at > UTC_TIMESTAMP() - INTERVAL 1 HOUR", ['reset:' . $email, $ip]);
+        Db::insert('login_attempts', ['identifier' => 'reset:' . $email, 'ip_address' => $ip, 'success' => 0]);
+        if ($recent < 5 && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $user = Db::one("SELECT id FROM users WHERE email = ? AND status IN ('active','pending')", [$email]);
+            if ($user) {
+                $token = TokenService::issue((int) $user['id'], 'password_reset', 60);
+                NotificationService::event((int) $user['id'], 'password_reset', [
+                    'link' => rtrim((string) config('app.url'), '/') . url('reset-password/' . $token),
+                ]);
+                AuditService::log('security.password_reset_requested', 'user', $user['id'], null, null, null, (int) $user['id']);
+            }
+        }
+        // Same response whether or not the account exists (no user enumeration).
+        flash('success', 'If an account exists for that email, a password reset link has been sent. It is valid for 60 minutes.');
+        redirect('/login');
+    }
+
+    public function showReset(string $token): void
+    {
+        if (TokenService::peek($token, 'password_reset') === null) {
+            flash('error', 'This reset link is invalid or has expired. Please request a new one.');
+            redirect('/forgot-password');
+        }
+        $this->view('auth/reset', ['title' => 'Choose a new password', 'token' => $token], 'public');
+    }
+
+    public function reset(string $token): void
+    {
+        $password = (string) ($_POST['password'] ?? '');
+        if ($err = self::validatePassword($password)) {
+            flash('error', $err);
+            redirect('/reset-password/' . $token);
+        }
+        if ($password !== ($_POST['password_confirmation'] ?? '')) {
+            flash('error', 'Passwords do not match.');
+            redirect('/reset-password/' . $token);
+        }
+        $uid = TokenService::consume($token, 'password_reset');
+        if ($uid === null) {
+            flash('error', 'This reset link is invalid or has expired.');
+            redirect('/forgot-password');
+        }
+        Db::update('users', ['password_hash' => password_hash($password, PASSWORD_DEFAULT), 'password_changed_at' => now()], 'id = ?', [$uid]);
+        // Receiving the reset email proves ownership of the address.
+        Db::update('users', ['email_verified_at' => now()], 'id = ? AND email_verified_at IS NULL', [$uid]);
+        Auth::revokeAllSessions($uid);
+        AuditService::log('security.password_reset', 'user', $uid, null, null, null, $uid);
+        NotificationService::event($uid, 'password_changed');
+        flash('success', 'Your password has been reset. Please sign in.');
         redirect('/login');
     }
 

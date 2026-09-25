@@ -138,6 +138,7 @@ function status_badge(string $status): string
         'frozen' => 'info', 'reversed' => 'info',
         'locked' => 'danger', 'suspended' => 'danger', 'failed' => 'danger', 'rejected' => 'danger',
         'closed' => 'muted', 'cancelled' => 'muted',
+        'open' => 'info', 'assigned' => 'info', 'escalated' => 'danger', 'resolved' => 'success', 'awaiting you' => 'warning',
     ];
     return '<span class="badge badge-' . ($map[$status] ?? 'muted') . '">' . e(ucfirst($status)) . '</span>';
 }
@@ -160,4 +161,18 @@ function page_url(int $page): string
     $q = $_GET;
     $q['page'] = $page;
     return '?' . http_build_query($q);
+}
+
+function json_response(array $data, int $status = 200): never
+{
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+function wants_json(): bool
+{
+    return str_contains((string) ($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json');
 }

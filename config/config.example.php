@@ -19,6 +19,7 @@ return [
     ],
     'mail' => [
         'enabled'    => false,             // integration point — disabled by default
+        'driver'     => 'log',             // log (storage/logs/mail.log) | mail (PHP mail() via cPanel sendmail)
         'from_email' => 'no-reply@example.com',
         'from_name'  => null,              // defaults to bank name
     ],

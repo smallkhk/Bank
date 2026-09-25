@@ -20,7 +20,9 @@
 
 <section class="card">
   <div class="card-head"><h2>Transactions &amp; statement</h2>
-    <button class="btn btn-ghost btn-sm no-print" type="button" data-print>Print</button></div>
+    <div class="no-print actions-inline">
+      <a class="btn btn-secondary btn-sm" href="<?= e(url('accounts/' . $a['id'] . '/statement') . '?' . http_build_query(['from' => $filters['from'] ?? gmdate('Y-m-01'), 'to' => $filters['to'] ?? gmdate('Y-m-d')])) ?>">Download PDF</a>
+      <button class="btn btn-ghost btn-sm" type="button" data-print>Print</button></div></div>
   <form class="filters no-print" method="get">
     <label>From <input type="date" name="from" value="<?= e($filters['from'] ?? '') ?>"></label>
     <label>To <input type="date" name="to" value="<?= e($filters['to'] ?? '') ?>"></label>
@@ -32,7 +34,7 @@
   <?php if ($statement): ?>
     <div class="statement-head">
       <div><strong><?= e(bank_name()) ?></strong><br><?= e($a['customer_name']) ?><br><span class="mono"><?= e($a['account_number']) ?></span></div>
-      <div>Period: <?= e(($filters['from'] ?? 'Opening') . ' — ' . ($filters['to'] ?? gmdate('Y-m-d'))) ?></div>
+      <div>Period: <?= e(fmt_date($statement['from'], 'M j, Y') . ' — ' . fmt_date($statement['to'], 'M j, Y')) ?></div>
       <dl class="kv">
         <dt>Opening balance</dt><dd><?= e(money($statement['opening'])) ?></dd>
         <dt>Total credits</dt><dd class="pos">+<?= e(money($statement['credits'])) ?></dd>

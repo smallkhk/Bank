@@ -244,8 +244,8 @@ final class AccountService
             }
             Db::update('accounts', ['status' => $status, 'status_reason' => $reason], 'id = ?', [$accountId]);
             AuditService::log('account.status_changed', 'account', $accountId, $acc['status'], $status, $reason);
-            NotificationService::notifyAccountOwner($accountId, 'Account status updated',
-                'Your account ' . mask_account($acc['account_number']) . ' is now ' . $status . '.');
+            NotificationService::eventForAccountOwner($accountId, 'account_status',
+                ['account' => mask_account($acc['account_number']), 'status' => $status]);
         });
     }
 

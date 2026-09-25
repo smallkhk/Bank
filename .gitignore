@@ -7,3 +7,5 @@
 !/public_html/uploads/.htaccess
 !/public_html/uploads/.gitkeep
 .DS_Store
+/storage/attachments/
+/storage/branding/

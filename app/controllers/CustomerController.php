@@ -9,6 +9,7 @@ use App\Services\AccountService;
 use App\Services\AuditService;
 use App\Services\FundingService;
 use App\Services\Money;
+use App\Services\StatementService;
 use App\Services\TransferService;
 use App\Services\WithdrawalService;
 
@@ -129,18 +130,7 @@ final class CustomerController extends Controller
 
         $statement = null;
         if (!empty($filters['from']) || !empty($filters['to'])) {
-            $from = ($filters['from'] ?? '1970-01-01') . ' 00:00:00';
-            $to = ($filters['to'] ?? gmdate('Y-m-d')) . ' 23:59:59';
-            $opening = Db::value('SELECT balance_before FROM ledger_entries WHERE account_id = ? AND created_at >= ? ORDER BY id ASC LIMIT 1', [$acc['id'], $from]);
-            $closing = Db::value('SELECT balance_after FROM ledger_entries WHERE account_id = ? AND created_at <= ? ORDER BY id DESC LIMIT 1', [$acc['id'], $to]);
-            $sums = Db::one("SELECT COALESCE(SUM(CASE WHEN entry_type='credit' THEN amount END),0) AS credits,
-                                    COALESCE(SUM(CASE WHEN entry_type='debit' THEN amount END),0) AS debits
-                               FROM ledger_entries WHERE account_id = ? AND created_at BETWEEN ? AND ?", [$acc['id'], $from, $to]);
-            $statement = [
-                'opening' => $opening !== null ? (int) $opening : (int) ($closing ?? 0),
-                'closing' => $closing !== null ? (int) $closing : 0,
-                'credits' => (int) $sums['credits'], 'debits' => (int) $sums['debits'],
-            ];
+            $statement = StatementService::build((int) $acc['id'], $filters['from'] ?? '2000-01-01', $filters['to'] ?? gmdate('Y-m-d'), 1);
         }
 
         $this->view('customer/account', [
@@ -153,6 +143,31 @@ final class CustomerController extends Controller
             'filters' => $filters,
             'statement' => $statement,
         ]);
+    }
+
+    /** Download a PDF statement for a date range (defaults to the current month). */
+    public function statement(string $id): void
+    {
+        $acc = $this->ownAccount((int) $id);
+        self::sendStatement($acc, input('from'), input('to'));
+    }
+
+    public static function sendStatement(array $acc, string $from, string $to): never
+    {
+        $valid = fn (string $d) => $d !== '' && \DateTimeImmutable::createFromFormat('!Y-m-d', $d) !== false;
+        $from = $valid($from) ? $from : gmdate('Y-m-01');
+        $to = $valid($to) ? $to : gmdate('Y-m-d');
+        if ($from > $to) {
+            [$from, $to] = [$to, $from];
+        }
+        $pdf = StatementService::pdf($acc, StatementService::build((int) $acc['id'], $from, $to));
+        AuditService::log('statement.downloaded', 'account', $acc['id'], null, ['from' => $from, 'to' => $to]);
+        header('Content-Type: application/pdf');
+        header('Content-Length: ' . strlen($pdf));
+        header('Content-Disposition: attachment; filename="statement-' . $acc['account_number'] . '-' . $from . '-to-' . $to . '.pdf"');
+        header('Cache-Control: private, no-store');
+        echo $pdf;
+        exit;
     }
 
     public function transactions(): void
@@ -336,8 +351,18 @@ final class CustomerController extends Controller
         Db::update('users', ['password_hash' => password_hash($new, PASSWORD_DEFAULT), 'password_changed_at' => now()], 'id = ?', [$user['id']]);
         $revoked = Auth::revokeOtherSessions((int) $user['id']);
         AuditService::log('security.password_changed', 'user', $user['id'], null, ['other_sessions_revoked' => $revoked]);
-        \App\Services\NotificationService::notify((int) $user['id'], 'Password changed', 'Your password was changed. If this was not you, contact support immediately.');
+        \App\Services\NotificationService::event((int) $user['id'], 'password_changed');
         flash('success', 'Password updated. Other devices have been signed out.');
+        redirect('/profile');
+    }
+
+    public function sendVerification(): void
+    {
+        $user = Auth::user();
+        if (!$user['email_verified_at']) {
+            AuthController::sendVerification((int) $user['id']);
+            flash('success', 'A verification link has been sent to ' . $user['email'] . '.');
+        }
         redirect('/profile');
     }
 

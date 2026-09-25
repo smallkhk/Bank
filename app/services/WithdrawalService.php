@@ -41,8 +41,10 @@ final class WithdrawalService
                 'requested_by' => $requestedBy,
             ]);
             AuditService::log('withdrawal.requested', 'withdrawal_request', $id, null, ['amount' => $amount, 'fee' => $fee, 'account' => $acc['account_number']]);
-            NotificationService::notifyAccountOwner($accountId, 'Withdrawal requested',
-                'Your withdrawal of ' . money($amount, $acc['currency']) . ' is pending review.', '/withdrawals');
+            $ref = (string) Db::value('SELECT reference FROM withdrawal_requests WHERE id = ?', [$id]);
+            NotificationService::eventForAccountOwner($accountId, 'withdrawal_requested', [
+                'amount' => money($amount, $acc['currency']), 'account' => mask_account($acc['account_number']), 'reference' => $ref,
+            ], '/withdrawals');
             return $id;
         });
     }
@@ -85,8 +87,9 @@ final class WithdrawalService
             Db::update('withdrawal_requests', ['status' => 'completed', 'transaction_id' => $txId], 'id = ?', [$id]);
             ApprovalService::record('withdrawal_request', $id, 'approved', $approverId, $note);
             AuditService::log('withdrawal.approved', 'withdrawal_request', $id, 'pending', 'completed', $note);
-            NotificationService::notifyAccountOwner((int) $acc['id'], 'Withdrawal approved',
-                'Your withdrawal of ' . money((int) $req['amount'], $req['currency']) . ' has been completed.', '/withdrawals');
+            NotificationService::eventForAccountOwner((int) $acc['id'], 'withdrawal_completed', [
+                'amount' => money((int) $req['amount'], $req['currency']), 'account' => mask_account($acc['account_number']), 'reference' => $req['reference'],
+            ], '/withdrawals');
         });
     }
 
@@ -115,8 +118,8 @@ final class WithdrawalService
                 ApprovalService::record('withdrawal_request', $id, 'rejected', $by, $note);
             }
             AuditService::log('withdrawal.' . $status, 'withdrawal_request', $id, 'pending', $status, $note);
-            NotificationService::notifyAccountOwner((int) $req['account_id'], 'Withdrawal ' . $status,
-                'Withdrawal ' . $req['reference'] . ' was ' . $status . '. Held funds have been released.', '/withdrawals');
+            NotificationService::eventForAccountOwner((int) $req['account_id'], 'withdrawal_closed',
+                ['reference' => $req['reference'], 'status' => $status], '/withdrawals');
         });
     }
 }

@@ -36,15 +36,26 @@ final class Middleware
                 if (!Auth::isStaff()) {
                     self::forbidden();
                 }
+                self::requireStaff2fa();
                 return;
             case 'perm':
                 self::requireLogin();
                 if (!Auth::isStaff() || !Auth::can((string) $arg)) {
                     self::forbidden();
                 }
+                self::requireStaff2fa();
                 return;
         }
         throw new \LogicException("Unknown middleware $name");
+    }
+
+    /** When enforced by settings, staff must enrol in 2FA before using the back office. */
+    private static function requireStaff2fa(): void
+    {
+        if (setting('require_2fa_staff') === '1' && !Auth::user()['twofa_enabled_at']) {
+            flash('error', 'Two-factor authentication is required for staff. Please set it up to continue.');
+            redirect('/profile/2fa');
+        }
     }
 
     private static function requireLogin(): void

@@ -62,6 +62,33 @@
   <?php endif; ?>
 </section>
 
+<div class="two-col">
+<?php if (can('support.view')): ?>
+<section class="card">
+  <h2>Support cases</h2>
+  <?php if (!$tickets): ?><p class="empty">No support cases.</p><?php endif; ?>
+  <?php foreach ($tickets as $t): ?>
+    <a class="list-row link-row" href="<?= e(url('admin/support/' . $t['id'])) ?>"><div><?= e($t['subject']) ?><div class="muted small"><?= e($t['reference']) ?> · <?= e(fmt_date($t['created_at'], 'M j, Y')) ?></div></div><?= status_badge($t['status']) ?></a>
+  <?php endforeach; ?>
+  <details class="mt"><summary class="btn btn-secondary btn-sm">Open a case for this customer</summary>
+    <form method="post" action="<?= e(url('admin/customers/' . $c['id'] . '/tickets')) ?>" class="form mt" enctype="multipart/form-data"><?= csrf_field() ?>
+      <label>Category <select name="category"><?php foreach ($categories as $cat): ?><option><?= e($cat) ?></option><?php endforeach; ?></select></label>
+      <label>Subject <input name="subject" required maxlength="190"></label>
+      <label>Message to customer <textarea name="message" rows="3" required></textarea></label>
+      <button class="btn btn-primary btn-sm">Open case</button></form></details>
+</section>
+<?php endif; ?>
+<section class="card">
+  <h2>Security</h2>
+  <dl class="kv"><dt>Two-step verification</dt><dd><?= $twofa ? '<span class="badge badge-success">On</span>' : '<span class="badge badge-muted">Off</span>' ?></dd></dl>
+  <?php if ($twofa && can('customers.lock')): ?>
+  <form method="post" action="<?= e(url('admin/customers/' . $c['id'] . '/reset-2fa')) ?>" class="inline-form"><?= csrf_field() ?>
+    <input name="reason" required placeholder="Reason (identity verified how?)" maxlength="255">
+    <button class="btn btn-ghost btn-sm" data-confirm="Reset this customer's two-step verification? Only do this after verifying their identity.">Reset 2FA</button></form>
+  <?php endif; ?>
+</section>
+</div>
+
 <section class="card">
   <h2>Recent audit history</h2>
   <?php include APP_PATH . '/views/admin/_audit_rows.php'; ?>

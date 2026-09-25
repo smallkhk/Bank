@@ -5,7 +5,10 @@
   <dl class="kv">
     <dt>Name</dt><dd><?= e($user['full_name']) ?></dd>
     <dt>Username</dt><dd><?= e($user['username']) ?></dd>
-    <dt>Email</dt><dd><?= e($user['email']) ?></dd>
+    <dt>Email</dt><dd><?= e($user['email']) ?>
+      <?php if ($user['email_verified_at']): ?><span class="badge badge-success">Verified</span>
+      <?php else: ?><span class="badge badge-warning">Not verified</span>
+        <form method="post" action="<?= e(url('profile/verify-email')) ?>" class="inline"><?= csrf_field() ?><button class="linklike">Send verification link</button></form><?php endif; ?></dd>
     <dt>Phone</dt><dd><?= e($user['phone'] ?: '—') ?></dd>
     <?php if ($customer): ?>
       <dt>Customer number</dt><dd class="mono"><?= e($customer['customer_number']) ?></dd>
@@ -26,6 +29,12 @@
   </form>
 </section>
 </div>
+<section class="card">
+  <div class="card-head"><h2>Two-step verification</h2><a class="btn btn-secondary btn-sm" href="<?= e(url('profile/2fa')) ?>"><?= $user['twofa_enabled_at'] ? 'Manage' : 'Set up' ?></a></div>
+  <p class="muted"><?= $user['twofa_enabled_at']
+    ? '<span class="badge badge-success">On</span> A code from your authenticator app is required each time you sign in.'
+    : '<span class="badge badge-warning">Off</span> Protect your account with a one-time code from an authenticator app.' ?></p>
+</section>
 <section class="card">
   <div class="card-head"><h2>Active sessions</h2>
     <form method="post" action="<?= e(url('profile/sessions/revoke')) ?>"><?= csrf_field() ?><button class="btn btn-secondary btn-sm" data-confirm="Sign out of all other devices?">Sign out other devices</button></form></div>

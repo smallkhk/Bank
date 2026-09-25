@@ -165,15 +165,78 @@ final class Auth
             Db::update('users', ['password_hash' => password_hash($password, PASSWORD_DEFAULT)], 'id = ?', [$user['id']]);
         }
 
+        if ($user['user_type'] === 'customer' && setting('require_email_verification') === '1' && !$user['email_verified_at']) {
+            $_SESSION['verify_uid'] = (int) $user['id'];
+            return ['ok' => false, 'error' => 'Please verify your email address first. Check your inbox for the verification link.', 'unverified' => true];
+        }
+
+        if ($user['twofa_enabled_at']) {
+            session_regenerate_id(true);
+            $_SESSION['2fa_pending'] = ['uid' => (int) $user['id'], 'at' => time(), 'tries' => 0];
+            return ['ok' => true, 'twofa' => true];
+        }
+
         self::login((int) $user['id']);
+        return ['ok' => true];
+    }
+
+    /**
+     * Second login step. Accepts a TOTP code or a one-time recovery code.
+     * @return array{ok:bool, error?:string, restart?:bool}
+     */
+    public static function completeTwoFactor(string $code): array
+    {
+        $p = $_SESSION['2fa_pending'] ?? null;
+        if (!$p || $p['at'] < time() - 300) {
+            unset($_SESSION['2fa_pending']);
+            return ['ok' => false, 'restart' => true, 'error' => 'Your sign-in expired. Please sign in again.'];
+        }
+        $user = Db::one('SELECT * FROM users WHERE id = ?', [$p['uid']]);
+        if (!$user || $user['status'] !== 'active' || !$user['twofa_enabled_at']) {
+            unset($_SESSION['2fa_pending']);
+            return ['ok' => false, 'restart' => true, 'error' => 'Please sign in again.'];
+        }
+        $code = strtoupper(trim($code));
+        $ok = \App\Services\Totp::verify((string) $user['twofa_secret'], $code);
+        $usedRecovery = false;
+        if (!$ok && preg_match('/^[A-Z0-9]{4}-?[A-Z0-9]{4}$/', $code)) {
+            $codes = json_decode((string) $user['twofa_recovery_codes'], true) ?: [];
+            $normalized = str_replace('-', '', $code);
+            foreach ($codes as $i => $hash) {
+                if (password_verify($normalized, $hash)) {
+                    unset($codes[$i]);
+                    Db::update('users', ['twofa_recovery_codes' => json_encode(array_values($codes))], 'id = ?', [$user['id']]);
+                    $ok = $usedRecovery = true;
+                    break;
+                }
+            }
+        }
+        if (!$ok) {
+            $_SESSION['2fa_pending']['tries'] = ++$p['tries'];
+            Db::insert('login_attempts', ['identifier' => strtolower($user['username']), 'ip_address' => client_ip(), 'success' => 0]);
+            AuditService::log('auth.2fa_failed', 'user', $user['id'], null, null, null, (int) $user['id']);
+            if ($p['tries'] >= 5) {
+                unset($_SESSION['2fa_pending']);
+                return ['ok' => false, 'restart' => true, 'error' => 'Too many incorrect codes. Please sign in again.'];
+            }
+            return ['ok' => false, 'error' => 'That code is not valid. Please try again.'];
+        }
+        unset($_SESSION['2fa_pending']);
+        self::login((int) $user['id']);
+        if ($usedRecovery) {
+            AuditService::log('auth.2fa_recovery_code_used', 'user', $user['id']);
+        }
         return ['ok' => true];
     }
 
     public static function login(int $userId): void
     {
+        $ua = substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255);
+        $hadSessions = (bool) Db::value('SELECT 1 FROM user_sessions WHERE user_id = ? LIMIT 1', [$userId]);
+        $knownDevice = (bool) Db::value('SELECT 1 FROM user_sessions WHERE user_id = ? AND user_agent = ? LIMIT 1', [$userId, $ua]);
         session_regenerate_id(true);
         $token = bin2hex(random_bytes(32));
-        $_SESSION = ['uid' => $userId, 'sess_token' => $token];
+        $_SESSION = ['uid' => $userId, 'sess_token' => $token, 'intended' => $_SESSION['intended'] ?? null];
         Db::insert('user_sessions', [
             'user_id'    => $userId,
             'token_hash' => hash('sha256', $token),
@@ -184,6 +247,12 @@ final class Auth
         self::$resolved = false;
         self::$permissions = null;
         AuditService::log('auth.login', 'user', $userId, null, null, null, $userId);
+        if ($hadSessions && !$knownDevice) {
+            AuditService::log('auth.new_device', 'user', $userId, null, ['ip' => client_ip(), 'ua' => $ua], null, $userId);
+            \App\Services\NotificationService::event($userId, 'login_new_device', [
+                'ip' => client_ip(), 'device' => mb_strimwidth($ua ?: 'unknown device', 0, 80, '…'),
+            ], '/profile');
+        }
     }
 
     public static function logout(): void

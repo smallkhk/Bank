@@ -1,10 +1,12 @@
-# Internet Banking Platform: Phase 1 (Core)
+# Internet Banking Platform
 
 This is a closed-loop internet banking portal and internal ledger. It is written in plain PHP 8.2+ with MySQL/MariaDB and runs on ordinary cPanel hosting. It does not need Docker, Node, Redis or a framework.
 
 > **Sandbox notice:** No real money moves. Deposits and withdrawals are simulated and handled by staff. Every balance change comes from ledger postings. Do not present this as a real banking service until the compliance items in §38 of the spec are addressed.
 
-## What's included (Phase 1)
+## What's included
+
+### Phase 1: Core
 
 | Area | Details |
 |---|---|
@@ -22,6 +24,20 @@ This is a closed-loop internet banking portal and internal ledger. It is written
 | **Branding** | Bank name (defaults to `{{BANK_NAME}}`), logo, favicon, colors, currency, contacts, terms and privacy text, login message, footer and maintenance mode. All set from **Settings**. |
 | **Customer portal** | Dashboard, accounts, statements by date range (printable), transaction receipts, transfers, withdrawals, add funds, notifications, profile and security. Mobile-first. |
 
+### Phase 2: Banking experience
+
+| Area | Details |
+|---|---|
+| **Support tickets** | Customers pick a category, write a subject and message, and can attach a file. Statuses: open, pending, assigned, escalated, resolved, closed. Staff can assign tickets, set priority, escalate, add internal notes the customer never sees, open cases for a customer, and filter by SLA-overdue, mine or unassigned. Response-time target and categories are configurable. |
+| **Live chat** | Customer ⇄ support chat that works on any shared host. It uses AJAX polling instead of WebSockets. Supports read/unread tracking, agent assignment, internal notes, attachments and conversation search. |
+| **Attachments** | Allowed types are PNG, JPG, WEBP, PDF and TXT, checked by content rather than extension, up to 5 MB. Files are stored **outside** the web root under random names and served only after an access check, with a sandboxing CSP. |
+| **Notifications** | Twenty event templates, editable in **Templates**, using `{{placeholders}}`, delivered in-app and by email. Covers login from a new device, password and security changes, transfers, deposits, withdrawals, fees, support replies and more. |
+| **Email** | `mail.driver` can be `log` (written to `storage/logs/mail.log`, the safe default) or `mail` (the server's sendmail through PHP `mail()`, available on cPanel). |
+| **Security** | Two-step verification using authenticator-app codes, with 8 single-use recovery codes. Staff can reset a customer's 2FA with a reason, and 2FA can optionally be required for all staff. Password reset links are single-use, expire after 60 minutes and don't reveal whether an account exists. Email verification can optionally be required before sign-in. Existing sessions are revoked when a password is reset. |
+| **Statements** | PDF download for any date range, generated from the ledger with a built-in writer (no libraries needed). Available to customers and staff. Printable HTML view too. |
+| **Fees** | Monthly account fee per account type or global default, with an optional waiver above a minimum balance. The monthly cron job is **idempotent**. Staff can charge a custom fee with maker-checker approval. Fees report by type and month. Every fee is a ledger transaction. |
+| **Limits** | Resolved as individual account override → account type (**Account types** page) → global default. |
+
 Money is stored as integer minor units (cents) everywhere. Floats are never used.
 
 ## Architecture
@@ -35,8 +51,9 @@ app/
   controllers/      ← customer + admin/ controllers
   views/            ← layouts, partials, customer/, admin/
 config/             ← config.php (not web accessible, gitignored)
-database/           ← schema.sql, install.php
-storage/            ← logs/, branding uploads (outside web root)
+database/           ← schema.sql, migrations/, install.php
+cron/               ← scheduled jobs (monthly-fees.php)
+storage/            ← logs/, branding, attachments (outside web root)
 ```
 
 **Core principle:** `accounts.balance` is a cache. Only `LedgerService::postEntries()` writes to it, and it does so in the same DB transaction that inserts the balanced ledger rows. Money coming into or leaving the platform goes through internal system accounts (`SYS-FUNDING`, `SYS-SETTLEMENT`, `SYS-FEES`, `SYS-ADJUST`). As a result, the sum of all balances is always zero.
@@ -46,21 +63,26 @@ storage/            ← logs/, branding uploads (outside web root)
 1. Upload the repository **above** `public_html` (for example `/home/USER/bank/`). Point the domain or subdomain document root at `bank/public_html`. Alternatively, move the contents of `public_html/` into your existing `public_html` and adjust the `require` path in `index.php`.
 2. Create a MySQL database and user in cPanel, and grant **ALL PRIVILEGES** (TRIGGER is needed for the ledger immutability triggers).
 3. Copy `config/config.example.php` to `config/config.php` and fill in the DB credentials, the URL and a random `app.key`. Keep `debug => false` and `session.secure => true` (HTTPS).
-4. From **Terminal** (or SSH), run:
+4. From **Terminal** (or SSH), run the command below. Re-run it after every upgrade: it applies new migrations from `database/migrations/` automatically.
    ```
    php database/install.php
    ```
    This creates the tables, roles, permissions, settings and system accounts, then prompts for the first Super Admin. It is safe to re-run.
 5. Make sure `storage/` is writable by PHP. Enable SSL, then uncomment the HTTPS redirect in `public_html/.htaccess`.
-6. Sign in at `/login`. Then open **Settings** to set the bank name and branding, and **Staff** to add a second approver. Maker-checker means an approver cannot approve their own add-funds, adjustment or withdrawal requests; there is a setting to relax this, but it is not recommended.
+6. Add the monthly fee cron in cPanel → **Cron Jobs**:
+   ```
+   15 2 1 * * /usr/local/bin/php /home/USER/bank/cron/monthly-fees.php
+   ```
+   (It charges the previous month. Running it again for the same month never charges twice.)
+7. Sign in at `/login`. Then open **Settings** to set the bank name and branding, and **Staff** to add a second approver. Maker-checker means an approver cannot approve their own add-funds, adjustment or withdrawal requests; there is a setting to relax this, but it is not recommended.
 
 ## Integration points (disabled by default)
 
-- **Email/SMS:** `NotificationService::deliverExternal()` (`mail.enabled` in config)
+- **Email/SMS:** `Mailer` (add an API/SMTP provider driver; `mail.enabled` and `mail.driver` in config)
 - **Payment/payout providers:** `FundingService` (deposits) and `WithdrawalService::approve()` (payouts)
 - **Fraud/risk:** `RiskService`
 - **KYC:** `customers.kyc_status` and `customer_documents`
 
 ## Roadmap
 
-Phase 2 covers support tickets and chat, statements as PDF, a notification template editor and 2FA. Phase 3 covers cards. Phases 4–5 cover simulated investments and crypto. Phase 6 covers external integrations. The schema, permissions and service layer are designed so these modules can be added without reworking the core.
+Phase 3 covers cards. Phases 4–5 cover simulated investments and crypto. Phase 6 covers external integrations. The schema, permissions and service layer are designed so these modules can be added without reworking the core.

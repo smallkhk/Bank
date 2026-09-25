@@ -12,6 +12,10 @@
       </label>
       <button class="btn btn-primary btn-block">Sign in</button>
     </form>
+    <p class="auth-alt"><a href="<?= e(url('forgot-password')) ?>">Forgot your password?</a></p>
+    <?php if (!empty($_SESSION['show_resend'])): ?>
+      <form method="post" action="<?= e(url('verify-email/resend')) ?>" class="center"><?= csrf_field() ?><button class="btn btn-ghost btn-sm">Resend verification email</button></form>
+    <?php endif; ?>
     <?php if (setting('registration_enabled') === '1'): ?>
       <p class="auth-alt">New customer? <a href="<?= e(url('register')) ?>">Open an account</a></p>
     <?php endif; ?>

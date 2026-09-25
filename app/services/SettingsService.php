@@ -56,7 +56,16 @@ final class SettingsService
         'login_lockout_minutes' => '15',
         'session_idle_minutes'  => '30',
         'confirm_password_for_transfers' => '1',
-        'allow_self_approval'   => '0',      // maker-checker: approver must differ from requester
+        'allow_self_approval'   => '0',
+        'require_2fa_staff'     => '0',
+        'require_email_verification' => '0',
+        // Fees (minor units)
+        'monthly_account_fee'   => '0',      // default when the account type has no monthly fee
+        'monthly_fee_min_balance_waiver' => '0', // waive when balance >= this (0 = no waiver)
+        // Support
+        'support_categories'    => "Account\nTransfers\nWithdrawals\nCards\nTechnical\nComplaint\nOther",
+        'support_sla_hours'     => '24',
+        'chat_enabled'          => '1',      // maker-checker: approver must differ from requester
     ];
 
     public static function get(string $key, ?string $default = null): ?string

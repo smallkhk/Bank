@@ -18,12 +18,12 @@
 <div class="action-grid">
   <?php if (can('funds.add') || can('funds.adjust')): ?>
   <section class="card">
-    <h2>Add funds / adjustment</h2>
+    <h2>Add funds / adjustment / fee</h2>
     <form method="post" action="<?= e(url('admin/accounts/' . $a['id'] . '/funds')) ?>" class="form">
       <?= csrf_field() ?>
       <label>Type <select name="kind">
         <?php if (can('funds.add')): ?><option value="deposit">Deposit (add funds)</option><?php endif; ?>
-        <?php if (can('funds.adjust')): ?><option value="adjustment_credit">Adjustment — credit</option><option value="adjustment_debit">Adjustment — debit</option><?php endif; ?>
+        <?php if (can('funds.adjust')): ?><option value="adjustment_credit">Adjustment — credit</option><option value="adjustment_debit">Adjustment — debit</option><option value="fee">Custom fee</option><?php endif; ?>
       </select></label>
       <label>Amount <input name="amount" required inputmode="decimal" placeholder="0.00"></label>
       <label>Reason <input name="reason" required maxlength="255"></label>
@@ -95,7 +95,10 @@
 <?php endif; ?>
 
 <section class="card">
-  <h2>Ledger entries</h2>
+  <div class="card-head"><h2>Ledger entries</h2>
+  <?php if (!$sys): ?><form class="inline-form" method="get" action="<?= e(url('admin/accounts/' . $a['id'] . '/statement')) ?>">
+    <input type="date" name="from" value="<?= gmdate('Y-m-01') ?>" aria-label="From"><input type="date" name="to" value="<?= gmdate('Y-m-d') ?>" aria-label="To">
+    <button class="btn btn-secondary btn-sm">Statement PDF</button></form><?php endif; ?></div>
   <div class="table-wrap"><table class="table small">
     <thead><tr><th>Date</th><th>Reference</th><th>Type</th><th>Description</th><th>Initiated by</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Balance after</th></tr></thead>
     <tbody><?php foreach ($entries as $en): ?>

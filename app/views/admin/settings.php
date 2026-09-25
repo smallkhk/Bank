@@ -1,5 +1,5 @@
 <?php
-$tabs = ['general' => 'General & branding', 'accounts' => 'Accounts', 'transactions' => 'Transactions', 'security' => 'Security', 'legal' => 'Legal & messages'];
+$tabs = ['general' => 'General & branding', 'accounts' => 'Accounts', 'transactions' => 'Transactions', 'security' => 'Security', 'support' => 'Support', 'legal' => 'Legal & messages'];
 $ro = !can('settings.manage');
 $money = fn (string $k) => App\Services\Money::toDecimal((int) $s[$k]);
 $text = function (string $k, string $label, string $type = 'text', string $hint = '') use ($s, $ro) {
@@ -38,10 +38,18 @@ $bool = function (string $k, string $label) use ($s, $ro) {
     <label>Transfers at or above this amount need approval <input name="s[transfer_approval_threshold]" value="<?= e($money('transfer_approval_threshold')) ?>" <?= $ro ? 'disabled' : '' ?>><small class="muted">0 = never</small></label>
     <?php $bool('add_funds_requires_approval', 'Add-funds requires a second approver'); $bool('customer_add_funds_requests', 'Customers may submit add-funds requests'); ?>
     <?php $bool('allow_self_approval', 'Allow staff to approve their own requests (not recommended)'); ?>
+    <label>Default monthly account fee <input name="s[monthly_account_fee]" value="<?= e($money('monthly_account_fee')) ?>" <?= $ro ? 'disabled' : '' ?>><small class="muted">Used when the account type has no fee of its own. 0 = none.</small></label>
+    <label>Waive monthly fee when balance is at least <input name="s[monthly_fee_min_balance_waiver]" value="<?= e($money('monthly_fee_min_balance_waiver')) ?>" <?= $ro ? 'disabled' : '' ?>><small class="muted">0 = never waive</small></label>
   <?php elseif ($tab === 'security'): ?>
     <?php $text('password_min_length', 'Minimum password length', 'number'); $text('login_max_attempts', 'Failed sign-ins before lockout', 'number'); ?>
     <?php $text('login_lockout_minutes', 'Lockout duration (minutes)', 'number'); $text('session_idle_minutes', 'Idle session timeout (minutes)', 'number'); ?>
     <?php $bool('confirm_password_for_transfers', 'Require password confirmation for transfers'); ?>
+    <?php $bool('require_2fa_staff', 'Require two-step verification for all staff'); ?>
+    <?php $bool('require_email_verification', 'Customers must verify their email before signing in (needs email delivery enabled)'); ?>
+  <?php elseif ($tab === 'support'): ?>
+    <?php $bool('chat_enabled', 'Enable live chat for customers'); ?>
+    <?php $text('support_sla_hours', 'Response target (SLA, hours)', 'number', 'Tickets awaiting a staff reply longer than this are flagged overdue.'); ?>
+    <label class="span-2">Ticket categories (one per line) <textarea name="s[support_categories]" rows="7" <?= $ro ? 'disabled' : '' ?>><?= e($s['support_categories']) ?></textarea></label>
   <?php else: ?>
     <?php $text('login_message', 'Sign-in page message'); $text('footer_text', 'Footer text'); ?>
     <label class="span-2">Maintenance message <input name="s[maintenance_message]" value="<?= e($s['maintenance_message']) ?>" <?= $ro ? 'disabled' : '' ?>></label>

@@ -6,6 +6,16 @@ $user = Auth::user();
 $isStaff = Auth::isStaff();
 $path = '/' . trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/');
 $unread = $user ? NotificationService::unreadCount((int) $user['id']) : 0;
+$openTickets = $unreadChats = $chatUnread = 0;
+if ($isStaff && can('support.view')) {
+    [$sc, $sp] = App\Services\StaffScope::customerFilter('t.customer_id');
+    $openTickets = (int) App\Core\Db::value("SELECT COUNT(*) FROM support_tickets t WHERE $sc AND t.status IN ('open','escalated')", $sp);
+    [$sc, $sp] = App\Services\StaffScope::customerFilter('cc.customer_id');
+    $unreadChats = (int) App\Core\Db::value("SELECT COUNT(DISTINCT cc.id) FROM chat_conversations cc JOIN chat_messages m ON m.conversation_id = cc.id
+        WHERE $sc AND cc.status = 'open' AND m.sender = 'customer' AND m.id > cc.staff_last_read_id", $sp);
+} elseif (!$isStaff && ($cid = App\Core\Auth::customerId())) {
+    $chatUnread = App\Services\ChatService::unreadForCustomer($cid);
+}
 
 $nav = $isStaff ? array_filter([
     ['/admin', 'Overview', true],
@@ -13,10 +23,15 @@ $nav = $isStaff ? array_filter([
     ['/admin/accounts', 'Accounts', can('accounts.view')],
     ['/admin/transactions', 'Transactions', can('transactions.view')],
     ['/admin/withdrawals', 'Withdrawals', can('funds.approve') || can('funds.withdraw')],
+    ['/admin/support', 'Support' . ($openTickets ? " ($openTickets)" : ''), can('support.view')],
+    ['/admin/chats', 'Live chat' . ($unreadChats ? " ($unreadChats)" : ''), can('support.view')],
+    ['/admin/fees', 'Fees', can('reports.view')],
     ['/admin/funds', 'Add funds', can('funds.approve') || can('funds.add') || can('funds.adjust')],
     ['/admin/staff', 'Staff', can('staff.view')],
     ['/admin/roles', 'Roles', can('roles.manage')],
     ['/admin/audit', 'Audit log', can('audit.view')],
+    ['/admin/account-types', 'Account types', can('settings.view')],
+    ['/admin/templates', 'Templates', can('settings.view')],
     ['/admin/settings', 'Settings', can('settings.view')],
 ], fn ($i) => $i[2]) : [
     ['/dashboard', 'Dashboard'],
@@ -25,6 +40,7 @@ $nav = $isStaff ? array_filter([
     ['/transactions', 'Transactions'],
     ['/withdrawals', 'Withdrawals'],
     ['/add-funds', 'Add funds'],
+    ['/support', 'Support' . ($chatUnread ? " ($chatUnread)" : '')],
     ['/notifications', 'Notifications'],
     ['/profile', 'Security'],
 ];

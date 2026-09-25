@@ -67,6 +67,15 @@ final class AccountController extends Controller
         ]);
     }
 
+    public function statement(string $id): void
+    {
+        $acc = self::loadScoped((int) $id);
+        if ($acc['is_system']) {
+            $this->notFound();
+        }
+        \App\Controllers\CustomerController::sendStatement($acc, input('from'), input('to'));
+    }
+
     public function updateStatus(string $id): void
     {
         $acc = self::loadScoped((int) $id);

@@ -68,6 +68,9 @@ final class CustomerController extends Controller
                                     WHERE (a.target_type = 'customer' AND a.target_id = ?) OR (a.target_type = 'user' AND a.target_id = ?)
                                     ORDER BY a.id DESC LIMIT 20", [(string) $c['id'], (string) $c['user_id']]),
             'statuses' => self::STATUSES,
+            'tickets'  => can('support.view') ? Db::all('SELECT * FROM support_tickets WHERE customer_id = ? ORDER BY id DESC LIMIT 10', [$c['id']]) : [],
+            'twofa'    => (bool) Db::value('SELECT twofa_enabled_at FROM users WHERE id = ?', [$c['user_id']]),
+            'categories' => \App\Services\SupportService::categories(),
         ]);
     }
 
@@ -138,7 +141,7 @@ final class CustomerController extends Controller
         }
         AuditService::log('customer.status_changed', 'customer', $c['id'], $c['status'], $status, $reason);
         if ($status === 'active') {
-            NotificationService::notify((int) $c['user_id'], 'Profile activated', 'Your online banking profile is now active.');
+            NotificationService::event((int) $c['user_id'], 'profile_activated');
         }
         flash('success', 'Customer status updated to ' . $status . '.');
         redirect($back);
@@ -171,12 +174,27 @@ final class CustomerController extends Controller
         redirect('/admin/customers/' . $c['id']);
     }
 
+    public function resetTwoFactor(string $id): void
+    {
+        $c = $this->load((int) $id);
+        $back = '/admin/customers/' . $c['id'];
+        $reason = $this->requireReason($back);
+        Db::update('users', ['twofa_secret' => null, 'twofa_enabled_at' => null, 'twofa_recovery_codes' => null], 'id = ?', [$c['user_id']]);
+        Auth::revokeAllSessions((int) $c['user_id']);
+        AuditService::log('security.2fa_reset_by_staff', 'customer', $c['id'], null, null, $reason);
+        NotificationService::event((int) $c['user_id'], 'security_changed', ['detail' => 'Two-step verification was reset by the bank at your request.']);
+        flash('success', 'Two-step verification reset. The customer has been signed out everywhere.');
+        redirect($back);
+    }
+
     public function openAccount(string $id): void
     {
         $c = $this->load((int) $id);
         $back = '/admin/customers/' . $c['id'];
         $accId = $this->attempt(fn () => AccountService::open((int) $c['id'], input('account_type'), null, input('nickname') ?: null), $back);
-        NotificationService::notify((int) $c['user_id'], 'New account opened', 'A new account has been opened for you.', '/accounts/' . $accId);
+        $acc = AccountService::find($accId);
+        NotificationService::event((int) $c['user_id'], 'account_opened',
+            ['type' => strtolower((string) $acc['type_name']), 'account' => mask_account($acc['account_number'])], '/accounts/' . $accId);
         flash('success', 'Account opened.');
         redirect('/admin/accounts/' . $accId);
     }

@@ -89,10 +89,15 @@ final class TransferService
 
         AuditService::log('transfer.completed', 'transaction', $txId, null,
             ['amount' => $amount, 'fee' => $fee, 'from' => $from['account_number'], 'to' => $to['account_number']]);
-        NotificationService::notifyAccountOwner((int) $from['id'], 'Transfer sent',
-            money($amount, $from['currency']) . ' sent to ' . mask_account($to['account_number']) . '.', '/transactions');
-        NotificationService::notifyAccountOwner((int) $to['id'], 'Money received',
-            money($amount, $to['currency']) . ' received from ' . mask_account($from['account_number']) . '.', '/transactions');
+        $ref = (string) Db::value('SELECT reference FROM transactions WHERE id = ?', [$txId]);
+        NotificationService::eventForAccountOwner((int) $from['id'], 'transfer_sent', [
+            'amount' => money($amount, $from['currency']), 'account' => mask_account($from['account_number']),
+            'counterparty' => mask_account($to['account_number']), 'reference' => $ref,
+        ], '/transactions/' . $ref);
+        NotificationService::eventForAccountOwner((int) $to['id'], 'transfer_received', [
+            'amount' => money($amount, $to['currency']), 'account' => mask_account($to['account_number']),
+            'counterparty' => mask_account($from['account_number']), 'reference' => $ref,
+        ], '/transactions/' . $ref);
     }
 
     public static function approve(int $txId, int $approverId, ?string $note): void
@@ -131,8 +136,8 @@ final class TransferService
             Db::update('transactions', ['status' => 'cancelled', 'approved_by' => $approverId], 'id = ?', [$txId]);
             ApprovalService::record('transaction', $txId, 'rejected', $approverId, $note);
             AuditService::log('transfer.rejected', 'transaction', $txId, 'pending', 'cancelled', $note);
-            NotificationService::notifyAccountOwner((int) $tx['from_account_id'], 'Transfer not approved',
-                'Your transfer ' . $tx['reference'] . ' was not approved. Held funds have been released.', '/transactions');
+            NotificationService::eventForAccountOwner((int) $tx['from_account_id'], 'transfer_rejected',
+                ['reference' => $tx['reference']], '/transactions');
         });
     }
 }

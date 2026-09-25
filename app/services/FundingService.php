@@ -12,7 +12,7 @@ use App\Core\Db;
  */
 final class FundingService
 {
-    public const KINDS = ['deposit', 'adjustment_credit', 'adjustment_debit'];
+    public const KINDS = ['deposit', 'adjustment_credit', 'adjustment_debit', 'fee'];
 
     /**
      * Create an add-funds / adjustment request. Deposits by staff holding funds.approve are
@@ -37,7 +37,7 @@ final class FundingService
         }
 
         $id = Db::insert('deposit_requests', [
-            'reference'          => LedgerService::reference($kind === 'deposit' ? 'DP' : 'AJ'),
+            'reference'          => LedgerService::reference(['deposit' => 'DP', 'fee' => 'FE'][$kind] ?? 'AJ'),
             'account_id'         => $accountId,
             'amount'             => $amount,
             'currency'           => $acc['currency'],
@@ -76,14 +76,14 @@ final class FundingService
             $acc = AccountService::lockAccounts([$req['account_id']])[$req['account_id']];
             $amount = (int) $req['amount'];
 
-            if ($req['kind'] === 'adjustment_debit') {
-                $type = 'adjustment';
+            if ($req['kind'] === 'adjustment_debit' || $req['kind'] === 'fee') {
+                $type = $req['kind'] === 'fee' ? 'fee' : 'adjustment';
                 $legs = [
                     ['account_id' => (int) $acc['id'], 'entry' => 'debit', 'amount' => $amount],
-                    ['account_id' => LedgerService::systemAccountId(LedgerService::SYS_ADJUST), 'entry' => 'credit', 'amount' => $amount],
+                    ['account_id' => LedgerService::systemAccountId($type === 'fee' ? LedgerService::SYS_FEES : LedgerService::SYS_ADJUST), 'entry' => 'credit', 'amount' => $amount],
                 ];
                 if (AccountService::available($acc) < $amount) {
-                    throw new BankingException('The account does not have enough available balance for this debit adjustment.');
+                    throw new BankingException('The account does not have enough available balance for this debit.');
                 }
                 $meta = ['from_account_id' => $acc['id']];
             } else {
@@ -98,7 +98,7 @@ final class FundingService
             }
 
             $txId = LedgerService::createTransaction($type, $amount, $req['currency'], $meta + [
-                'description'        => $type === 'deposit' ? 'Deposit' : 'Balance adjustment: ' . $req['reason'],
+                'description'        => match ($type) { 'deposit' => 'Deposit', 'fee' => 'Fee: ' . $req['reason'], default => 'Balance adjustment: ' . $req['reason'] },
                 'customer_reference' => $req['external_reference'] ?: $req['reference'],
                 'initiated_by'       => $req['requested_by'],
                 'approved_by'        => $approverId,
@@ -107,11 +107,11 @@ final class FundingService
 
             Db::update('deposit_requests', ['status' => 'approved', 'reviewed_by' => $approverId, 'reviewed_at' => now(), 'review_note' => $note, 'transaction_id' => $txId], 'id = ?', [$id]);
             ApprovalService::record('deposit_request', $id, 'approved', $approverId, $note);
-            AuditService::log($type === 'deposit' ? 'funds.deposit_posted' : 'funds.adjustment_posted', 'account', $acc['id'],
+            AuditService::log('funds.' . $type . '_posted', 'account', $acc['id'],
                 ['balance' => (int) $acc['balance']], ['transaction_id' => $txId, 'kind' => $req['kind'], 'amount' => $amount], $req['reason']);
-            NotificationService::notifyAccountOwner((int) $acc['id'],
-                $req['kind'] === 'adjustment_debit' ? 'Account debited' : 'Funds added',
-                money($amount, $req['currency']) . ($req['kind'] === 'adjustment_debit' ? ' was debited from ' : ' was credited to ') . mask_account($acc['account_number']) . '.',
+            NotificationService::eventForAccountOwner((int) $acc['id'],
+                in_array($req['kind'], ['adjustment_debit', 'fee'], true) ? 'account_debited' : 'deposit_posted',
+                ['amount' => money($amount, $req['currency']), 'account' => mask_account($acc['account_number']), 'detail' => $req['reason']],
                 '/transactions');
         });
     }

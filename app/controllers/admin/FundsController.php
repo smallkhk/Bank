@@ -36,7 +36,7 @@ final class FundsController extends Controller
         if ($kind === 'deposit' && !can('funds.add')) {
             $this->forbidden();
         }
-        if ($kind !== 'deposit' && !can('funds.adjust')) {
+        if (!in_array($kind, \App\Services\FundingService::KINDS, true) || ($kind !== 'deposit' && !can('funds.adjust'))) {
             $this->forbidden();
         }
         $amount = Money::parse(input('amount'));

@@ -28,6 +28,23 @@ foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) {
     $pdo->exec($stmt);
 }
 
+echo "Applying migrations...\n";
+$pdo->exec('CREATE TABLE IF NOT EXISTS migrations (name VARCHAR(190) PRIMARY KEY, applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB');
+$files = glob(__DIR__ . '/migrations/*.sql');
+sort($files);
+foreach ($files as $file) {
+    $name = basename($file);
+    if (Db::value('SELECT 1 FROM migrations WHERE name = ?', [$name])) {
+        continue;
+    }
+    echo "  - $name\n";
+    $m = preg_replace('/^\s*--.*$/m', '', (string) file_get_contents($file));
+    foreach (array_filter(array_map('trim', explode(';', $m))) as $stmt) {
+        $pdo->exec($stmt);
+    }
+    Db::insert('migrations', ['name' => $name]);
+}
+
 echo "Installing ledger immutability triggers...\n";
 foreach (['UPDATE', 'DELETE'] as $op) {
     $name = 'ledger_entries_no_' . strtolower($op);
@@ -95,6 +112,13 @@ foreach (['checking' => 'Checking', 'savings' => 'Savings', 'current' => 'Curren
 }
 foreach (SettingsService::DEFAULTS as $k => $v) {
     Db::query('INSERT IGNORE INTO settings (`key`, `value`) VALUES (?, ?)', [$k, $v]);
+}
+
+echo "Seeding notification templates...\n";
+foreach (App\Services\NotificationService::DEFAULTS as $event => [$name, $subject, $body]) {
+    $emailOnly = in_array($event, ['password_reset', 'email_verify'], true);
+    Db::query('INSERT IGNORE INTO notification_templates (event, name, subject, body, send_email, send_inapp) VALUES (?, ?, ?, ?, 1, ?)',
+        [$event, $name, $subject, $body, $emailOnly ? 0 : 1]);
 }
 
 echo "Creating internal system (GL) accounts...\n";
