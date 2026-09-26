@@ -1,5 +1,6 @@
 <div class="page-head"><div><a class="back" href="<?= e(url('admin/chats')) ?>">← Live chat</a>
   <h1><?= e($conv['customer_name']) ?> <?= status_badge($conv['status'] === 'open' ? 'active' : 'closed') ?></h1>
+  <?php if ($conv['subject']): ?><p class="muted"><?= e($conv['subject']) ?></p><?php endif; ?>
   <p class="muted"><a href="<?= e(url('admin/customers/' . $conv['customer_id'])) ?>">Customer <?= e($conv['customer_number']) ?></a></p></div>
   <form method="post" action="<?= e(url('admin/chats/' . $conv['id'] . '/update')) ?>" class="inline-form"><?= csrf_field() ?>
     <select name="assigned_to"><option value="">Unassigned</option><?php foreach ($staff as $s): ?><option value="<?= (int) $s['id'] ?>" <?= (int) $conv['assigned_to'] === (int) $s['id'] ? 'selected' : '' ?>><?= e($s['full_name']) ?></option><?php endforeach; ?></select>

@@ -5,7 +5,7 @@
   <?php if (!$rows): ?><p class="empty">No conversations.</p><?php endif; ?>
   <?php foreach ($rows as $c): ?>
     <a class="list-row link-row <?= $c['unread'] ? 'unread' : '' ?>" href="<?= e(url('admin/chats/' . $c['id'])) ?>">
-      <div><strong><?= e($c['customer_name']) ?></strong> <?= $c['unread'] ? '<span class="badge badge-danger">' . (int) $c['unread'] . ' unread</span>' : '' ?>
+      <div><strong><?= e($c['customer_name']) ?></strong> <?= $c['subject'] ? '<span class="muted">· ' . e($c['subject']) . '</span>' : '' ?> <?= $c['unread'] ? '<span class="badge badge-danger">' . (int) $c['unread'] . ' unread</span>' : '' ?>
         <div class="muted small"><?= e(mb_strimwidth((string) $c['last_body'], 0, 90, '…')) ?></div></div>
       <div class="right small muted"><?= e(fmt_date($c['last_message_at'])) ?><br><?= e($c['assignee'] ?? 'Unassigned') ?></div>
     </a>

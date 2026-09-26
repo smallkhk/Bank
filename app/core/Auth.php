@@ -44,8 +44,10 @@ final class Auth
             self::clearSession();
             return null;
         }
-        // Throttle last_seen writes to once a minute.
-        if (strtotime($session['last_seen_at'] . ' UTC') < time() - 60) {
+        // Throttle last_seen writes to once a minute. Background polling (badges, chat refresh)
+        // sends X-Background so an unattended screen still reaches the idle sign-out.
+        $background = ($_SERVER['HTTP_X_BACKGROUND'] ?? '') === '1';
+        if (!$background && strtotime($session['last_seen_at'] . ' UTC') < time() - 60) {
             Db::update('user_sessions', ['last_seen_at' => now()], 'id = ?', [$session['id']]);
         }
         $_SESSION['session_row_id'] = (int) $session['id'];

@@ -1,5 +1,5 @@
-<div class="page-head"><h1>Support</h1>
-  <?php if (setting('chat_enabled') === '1'): ?><a class="btn btn-primary" href="<?= e(url('chat')) ?>">Chat with us<?= $chatUnread ? ' (' . $chatUnread . ' new)' : '' ?></a><?php endif; ?></div>
+<div class="page-head"><div><div class="eyebrow">Support</div><h1>Support requests</h1></div>
+  <?php if (setting('chat_enabled') === '1'): ?><a class="btn btn-primary" href="<?= e(url('chat')) ?>"><?= icon('chat', 17) ?> Live chat<?= $chatUnread ? ' (' . $chatUnread . ' new)' : '' ?></a><?php endif; ?></div>
 <div class="two-col">
 <section class="card">
   <h2>New support request</h2>

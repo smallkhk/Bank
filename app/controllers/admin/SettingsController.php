@@ -70,6 +70,8 @@ final class SettingsController extends Controller
                 if ($value === '') {
                     continue;
                 }
+            } elseif ($key === 'bg_style') {
+                $value = in_array($value, ['aurora', 'prism', 'topo', 'plain'], true) ? $value : 'aurora';
             } elseif ($key === 'mail_driver') {
                 $value = in_array($value, ['mail', 'smtp'], true) ? $value : 'log';
             } elseif ($key === 'mail_from_email') {

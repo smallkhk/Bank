@@ -88,46 +88,93 @@ final class SupportController extends Controller
         redirect('/support/' . $t['id']);
     }
 
-    // ── Chat ──────────────────────────────────────────────────────────
+    // ── Live chat (several conversations per customer, resumable any time) ──
 
-    public function chat(): void
+    private function requireChat(): void
     {
         if (setting('chat_enabled') !== '1') {
             redirect('/support');
         }
-        $conv = ChatService::openConversation($this->cid());
-        $this->view('customer/chat', ['title' => 'Chat with us', 'conv' => $conv]);
     }
 
-    public function chatMessages(): void
+    private function ownConversation(int $id): array
     {
-        $conv = ChatService::openConversation($this->cid());
+        return ChatService::find($this->cid(), $id) ?? $this->notFound();
+    }
+
+    public function chat(): void
+    {
+        $this->requireChat();
+        $list = ChatService::conversations($this->cid());
+        $this->showChat($list, $list[0] ?? null);
+    }
+
+    public function chatView(string $id): void
+    {
+        $this->requireChat();
+        $conv = $this->ownConversation((int) $id);
+        $this->showChat(ChatService::conversations($this->cid()), $conv);
+    }
+
+    private function showChat(array $list, ?array $conv): void
+    {
+        $this->view('customer/chat', [
+            'title' => 'Chat with us', 'conversations' => $list, 'conv' => $conv,
+            'online' => ChatService::supportOnline(), 'ticketsEnabled' => setting('support_enabled') === '1',
+        ]);
+    }
+
+    public function chatStart(): void
+    {
+        $this->requireChat();
+        $conv = $this->attempt(fn () => ChatService::start($this->cid(), input('subject')), '/chat');
+        if (input('message') !== '') {
+            ChatService::post($conv, input('message'), null);
+        }
+        redirect('/chat/' . $conv['id']);
+    }
+
+    public function chatClose(string $id): void
+    {
+        $conv = $this->ownConversation((int) $id);
+        \App\Core\Db::update('chat_conversations', ['status' => 'closed'], 'id = ?', [$conv['id']]);
+        flash('success', 'Chat ended. You can reopen it any time by sending a new message.');
+        redirect('/chat/' . $conv['id']);
+    }
+
+    /** Poll: new messages for one conversation plus unread counts for the list. */
+    public function chatMessages(string $id = ''): void
+    {
+        $conv = $id !== '' ? $this->ownConversation((int) $id) : ChatService::openConversation($this->cid());
         $msgs = ChatService::messages((int) $conv['id'], max(0, (int) ($_GET['after'] ?? 0)), false);
         if ($msgs) {
             ChatService::markRead($conv, end($msgs)['id'], false);
         }
-        json_response(['messages' => $msgs]);
+        $unread = [];
+        foreach (ChatService::conversations($this->cid()) as $c) {
+            $unread[(int) $c['id']] = (int) $c['unread'];
+        }
+        json_response(['messages' => $msgs, 'unread' => $unread, 'online' => ChatService::supportOnline(),
+            'status' => (string) \App\Core\Db::value('SELECT status FROM chat_conversations WHERE id = ?', [$conv['id']])]);
     }
 
-    public function chatSend(): void
+    public function chatSend(string $id = ''): void
     {
-        if (setting('chat_enabled') !== '1') {
-            $this->forbidden();
-        }
-        $conv = ChatService::openConversation($this->cid());
+        $this->requireChat();
+        $conv = $id !== '' ? $this->ownConversation((int) $id) : ChatService::openConversation($this->cid());
         try {
-            $id = ChatService::post($conv, input('message'), AttachmentService::fromUpload('attachment'));
+            $mid = ChatService::post($conv, input('message'), AttachmentService::fromUpload('attachment'));
         } catch (BankingException $e) {
             if (wants_json()) {
                 json_response(['error' => $e->getMessage()], 422);
             }
             flash('error', $e->getMessage());
-            redirect('/chat');
+            redirect('/chat/' . $conv['id']);
         }
         if (wants_json()) {
-            json_response(['ok' => true, 'id' => $id]);
+            json_response(['ok' => true, 'id' => $mid]);
         }
-        redirect('/chat');
+        redirect('/chat/' . $conv['id']);
     }
 
     // ── Attachments (customers and staff) ─────────────────────────────

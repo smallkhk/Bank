@@ -91,9 +91,20 @@
     function poll() {
       if (busy) return;
       busy = true;
-      fetch(box.getAttribute('data-poll') + '?after=' + last, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+      fetch(box.getAttribute('data-poll') + '?after=' + last, { headers: { Accept: 'application/json', 'X-Background': '1' }, credentials: 'same-origin' })
         .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
         .then(function (d) {
+          // Conversation list unread counts and support presence (customer chat app)
+          if (d.unread) {
+            document.querySelectorAll('[data-conv]').forEach(function (a) {
+              var n = d.unread[a.getAttribute('data-conv')] || 0, b = a.querySelector('[data-conv-unread]');
+              if (b && !a.classList.contains('active')) { b.textContent = n; b.hidden = n === 0; }
+            });
+          }
+          if (typeof d.online === 'boolean') {
+            var pr = document.querySelector('[data-presence]');
+            if (pr) { pr.classList.toggle('on', d.online); pr.querySelector('[data-presence-text]').textContent = d.online ? 'Support is online' : 'We reply as soon as we can'; }
+          }
           var atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 60;
           (d.messages || []).forEach(function (m) { if (m.id > last) { render(m); last = m.id; } });
           if (atBottom || last && d.messages && d.messages.length) log.scrollTop = log.scrollHeight;
@@ -258,5 +269,103 @@
         setTimeout(function () { el.remove(); }, 400);
       }, 6000);
     });
+  });
+})();
+
+// Live attention badges: sidebar counts update on their own (no click or refresh needed).
+(function () {
+  'use strict';
+  document.addEventListener('DOMContentLoaded', function () {
+    var url = document.body.getAttribute('data-badges-url');
+    if (!url) return;
+    var baseTitle = document.title.replace(/^\(\d+\+?\)\s*/, ''), timer = null;
+    function paint(counts) {
+      var total = 0;
+      Object.keys(counts).forEach(function (k) {
+        var n = counts[k] || 0;
+        if (k !== 'notifications') total += n;
+        document.querySelectorAll('[data-badge="' + k + '"]').forEach(function (el) {
+          var old = parseInt(el.textContent, 10) || 0, cap = el.classList.contains('dot') ? 9 : 99;
+          el.textContent = n > cap ? cap + '+' : n;
+          el.hidden = n === 0;
+          if (n > old && !el.hidden) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+        });
+      });
+      total += counts.notifications || 0;
+      document.title = (total ? '(' + (total > 99 ? '99+' : total) + ') ' : '') + baseTitle;
+    }
+    function poll() {
+      fetch(url, { headers: { Accept: 'application/json', 'X-Background': '1' }, credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) { if (d && d.counts) paint(d.counts); })
+        .catch(function () {})
+        .then(schedule);
+    }
+    function schedule() { clearTimeout(timer); timer = setTimeout(poll, document.hidden ? 60000 : 12000); }
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) poll(); });
+    poll();
+  });
+})();
+
+// Loading screen ("vault dial") for full page loads: form submits and in-app links.
+(function () {
+  'use strict';
+  var overlay = null, msgTimer = null, fallback = null;
+  var messages = ['Securing your session', 'Checking details', 'Almost there'];
+  function build() {
+    if (overlay) return overlay;
+    var initial = (document.querySelector('.brand-mark') || { textContent: '' }).textContent.trim().charAt(0) || '';
+    var ticks = '';
+    for (var i = 0; i < 36; i++) {
+      var long = i % 3 === 0;
+      ticks += '<line x1="60" y1="' + (long ? 6 : 8) + '" x2="60" y2="' + (long ? 14 : 12) + '" transform="rotate(' + (i * 10) + ' 60 60)"/>';
+    }
+    overlay = document.createElement('div');
+    overlay.className = 'vault-loader';
+    overlay.setAttribute('role', 'status');
+    overlay.setAttribute('aria-live', 'polite');
+    overlay.hidden = true;
+    overlay.innerHTML =
+      '<div class="vault">' +
+        '<svg class="vault-ticks" viewBox="0 0 120 120" aria-hidden="true"><g>' + ticks + '</g></svg>' +
+        '<svg class="vault-arc" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="40" pathLength="100"/></svg>' +
+        '<svg class="vault-arc2" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="31" pathLength="100"/></svg>' +
+        '<span class="vault-core"></span>' +
+      '</div>' +
+      '<p class="vault-msg"></p>';
+    overlay.querySelector('.vault-core').textContent = initial;
+    document.body.appendChild(overlay);
+    return overlay;
+  }
+  function show() {
+    var el = build(), i = 0, msg = el.querySelector('.vault-msg');
+    msg.textContent = messages[0];
+    el.hidden = false;
+    requestAnimationFrame(function () { el.classList.add('is-on'); });
+    clearInterval(msgTimer);
+    msgTimer = setInterval(function () { i = Math.min(i + 1, messages.length - 1); msg.textContent = messages[i]; }, 1400);
+    clearTimeout(fallback);
+    fallback = setTimeout(hide, 15000); // never trap the user if the page doesn't change (e.g. a download)
+  }
+  function hide() {
+    clearInterval(msgTimer); clearTimeout(fallback);
+    if (overlay) { overlay.classList.remove('is-on'); overlay.hidden = true; }
+  }
+  window.addEventListener('pageshow', hide); // back/forward cache
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    if (form.hasAttribute('data-no-loader') || form.target === '_blank' || /\/statement\b|export=csv/.test(form.getAttribute('action') || '')) return;
+    // Run after other handlers: AJAX forms call preventDefault and must not show the loader.
+    setTimeout(function () { if (!e.defaultPrevented) show(); }, 0);
+  });
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href]');
+    if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var href = a.getAttribute('href');
+    if (!href || href.charAt(0) === '#' || a.target === '_blank' || a.hasAttribute('download') || a.hasAttribute('data-no-loader')) return;
+    if (/^(mailto|tel|sms|javascript):/i.test(href) || /\/(statement|attachments)\b/.test(href) || /export=csv/.test(href)) return;
+    if (a.origin && a.origin !== location.origin) return;
+    if (a.pathname === location.pathname && a.search === location.search && a.hash) return;
+    show();
   });
 })();

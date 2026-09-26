@@ -19,6 +19,7 @@ final class SettingsService
         'color_primary'        => '#0b3d63',
         'color_secondary'      => '#16629b',
         'color_accent'         => '#1a9e75',
+        'bg_style'             => 'aurora',    // aurora | prism | topo | plain
         'currency'             => 'USD',
         'currency_symbol'      => '$',
         'contact_email'        => '',

@@ -9,6 +9,48 @@ use App\Core\Db;
 /** Customer ⇄ support chat. Delivered by AJAX polling (no WebSocket server needed on cPanel). */
 final class ChatService
 {
+    /** Customer's conversations, newest activity first, with unread counts. */
+    public static function conversations(int $customerId): array
+    {
+        return Db::all(
+            "SELECT cc.*, s.full_name AS agent_name,
+                    (SELECT COUNT(*) FROM chat_messages m WHERE m.conversation_id = cc.id AND m.sender = 'staff' AND m.is_internal = 0 AND m.id > cc.customer_last_read_id) AS unread,
+                    (SELECT body FROM chat_messages m WHERE m.conversation_id = cc.id AND m.is_internal = 0 ORDER BY m.id DESC LIMIT 1) AS last_body
+               FROM chat_conversations cc LEFT JOIN users s ON s.id = cc.assigned_to
+              WHERE cc.customer_id = ? ORDER BY COALESCE(cc.last_message_at, cc.created_at) DESC LIMIT 50",
+            [$customerId]
+        );
+    }
+
+    public static function find(int $customerId, int $id): ?array
+    {
+        return Db::one('SELECT * FROM chat_conversations WHERE id = ? AND customer_id = ?', [$id, $customerId]);
+    }
+
+    public static function start(int $customerId, string $subject): array
+    {
+        $open = (int) Db::value("SELECT COUNT(*) FROM chat_conversations WHERE customer_id = ? AND status = 'open'", [$customerId]);
+        if ($open >= 10) {
+            throw new BankingException('You have 10 open chats. Please continue one of them or close some first.');
+        }
+        $id = Db::insert('chat_conversations', ['customer_id' => $customerId, 'subject' => mb_substr(trim($subject), 0, 190) ?: null]);
+        return Db::one('SELECT * FROM chat_conversations WHERE id = ?', [$id]);
+    }
+
+    /** True when a support agent has been active in the last 5 minutes. */
+    public static function supportOnline(): bool
+    {
+        return (bool) Db::value(
+            "SELECT 1 FROM user_sessions s JOIN users u ON u.id = s.user_id AND u.user_type = 'staff' AND u.status = 'active'
+               JOIN user_roles ur ON ur.user_id = u.id JOIN roles r ON r.id = ur.role_id
+              WHERE s.revoked_at IS NULL AND s.last_seen_at > UTC_TIMESTAMP() - INTERVAL 5 MINUTE
+                AND (r.slug = 'super_admin' OR EXISTS (SELECT 1 FROM role_permissions rp JOIN permissions p ON p.id = rp.permission_id
+                                                       WHERE rp.role_id = r.id AND p.slug = 'support.view'))
+              LIMIT 1"
+        );
+    }
+
+    /** Latest open conversation, or a new one (used by the single-chat endpoints). */
     public static function openConversation(int $customerId): array
     {
         $conv = Db::one("SELECT * FROM chat_conversations WHERE customer_id = ? AND status = 'open' ORDER BY id DESC LIMIT 1", [$customerId]);

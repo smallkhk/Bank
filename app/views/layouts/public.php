@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head><?php include APP_PATH . '/views/partials/head.php'; ?></head>
-<body class="public">
+<body class="public bg-<?= e(setting('bg_style', 'aurora')) ?>">
   <?php include APP_PATH . '/views/partials/sandbox.php'; ?>
   <header class="public-header"><?php include APP_PATH . '/views/partials/brand.php'; ?><?php include APP_PATH . '/views/partials/theme_toggle.php'; ?></header>
   <main class="public-main">

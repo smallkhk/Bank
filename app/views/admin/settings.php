@@ -18,6 +18,10 @@ $bool = function (string $k, string $label) use ($s, $ro) {
     <?php $text('bank_name', 'Bank name'); $text('bank_short_name', 'Short name'); ?>
     <label>Logo (PNG/JPG/WEBP, max 1 MB) <input type="file" name="logo" accept="image/png,image/jpeg,image/webp" <?= $ro ? 'disabled' : '' ?>></label>
     <label>Favicon (PNG/ICO) <input type="file" name="favicon" accept="image/png,image/x-icon" <?= $ro ? 'disabled' : '' ?>></label>
+    <label>Background style <select name="s[bg_style]" <?= $ro ? 'disabled' : '' ?>>
+      <?php foreach (['aurora' => 'Aurora: drifting colour glows over a dot grid', 'prism' => 'Prism: shifting colour field with pinstripes', 'topo' => 'Topography: contour lines like a relief map', 'plain' => 'Plain: solid background'] as $k => $l): ?>
+        <option value="<?= $k ?>" <?= ($s['bg_style'] ?? 'aurora') === $k ? 'selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select>
+      <small class="muted">Uses your brand colours, in light and dark mode.</small></label>
     <?php $text('color_primary', 'Primary color', 'color'); $text('color_secondary', 'Secondary color', 'color'); $text('color_accent', 'Accent color', 'color'); ?>
     <?php $text('currency', 'Currency code', 'text', 'ISO 4217, e.g. USD. Changing it does not convert existing accounts.'); $text('currency_symbol', 'Currency symbol'); ?>
     <?php $text('contact_email', 'Contact email', 'email'); $text('support_phone', 'Support phone'); $text('address', 'Address'); $text('website_url', 'Website URL', 'url'); ?>

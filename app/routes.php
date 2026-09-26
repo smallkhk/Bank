@@ -48,6 +48,7 @@ $router->post('/add-funds/card', [CustomerController::class, 'addFundsCard'], $c
 $router->get('/add-funds/card/return', [CustomerController::class, 'addFundsCardReturn'], $c);
 $router->post('/webhooks/stripe', [App\Controllers\WebhookController::class, 'stripe']);
 $router->get('/notifications', [CustomerController::class, 'notifications'], ['auth']);
+$router->get('/badges', static fn () => json_response(['counts' => App\Services\AttentionService::counts()]), ['auth']);
 $router->get('/profile', [CustomerController::class, 'profile'], ['auth']);
 $router->post('/profile/password', [CustomerController::class, 'changePassword'], ['auth']);
 $router->post('/profile/sessions/revoke', [CustomerController::class, 'revokeSessions'], ['auth']);
@@ -80,8 +81,13 @@ $router->get('/support/{id}', [SupportController::class, 'show'], $c);
 $router->post('/support/{id}/reply', [SupportController::class, 'reply'], $c);
 $router->post('/support/{id}/close', [SupportController::class, 'close'], $c);
 $router->get('/chat', [SupportController::class, 'chat'], $c);
-$router->get('/chat/messages', [SupportController::class, 'chatMessages'], $c);
-$router->post('/chat', [SupportController::class, 'chatSend'], $c);
+$router->get('/chat/messages', [SupportController::class, 'chatMessages'], $c);   // latest open chat
+$router->post('/chat', [SupportController::class, 'chatSend'], $c);               // latest open chat
+$router->post('/chat/new', [SupportController::class, 'chatStart'], $c);
+$router->get('/chat/{id}', [SupportController::class, 'chatView'], $c);
+$router->get('/chat/{id}/messages', [SupportController::class, 'chatMessages'], $c);
+$router->post('/chat/{id}', [SupportController::class, 'chatSend'], $c);
+$router->post('/chat/{id}/close', [SupportController::class, 'chatClose'], $c);
 $router->get('/attachments/{id}', [SupportController::class, 'attachment'], ['auth']);
 
 // Staff back office
