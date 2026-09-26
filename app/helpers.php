@@ -41,8 +41,13 @@ function url(string $path = '/'): string
 
 function asset(string $path): string
 {
-    $file = ROOT_PATH . '/public_html/assets/' . ltrim($path, '/');
-    $v = is_file($file) ? filemtime($file) : 0;
+    // Look beside the running front controller first: in the release layout public_html
+    // sits next to the app folder, not inside it.
+    $rel = '/assets/' . ltrim($path, '/');
+    $v = 0;
+    foreach ([dirname($_SERVER['SCRIPT_FILENAME'] ?? '') . $rel, ROOT_PATH . '/public_html' . $rel, dirname(ROOT_PATH) . '/public_html' . $rel] as $file) {
+        if (is_file($file)) { $v = filemtime($file); break; }
+    }
     return url('assets/' . ltrim($path, '/')) . '?v=' . $v;
 }
 

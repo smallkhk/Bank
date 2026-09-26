@@ -341,7 +341,7 @@
     var el = build(), i = 0, msg = el.querySelector('.vault-msg');
     msg.textContent = messages[0];
     el.hidden = false;
-    requestAnimationFrame(function () { el.classList.add('is-on'); });
+    el.classList.add('is-on'); // visible immediately, no fade-in wait
     clearInterval(msgTimer);
     msgTimer = setInterval(function () { i = Math.min(i + 1, messages.length - 1); msg.textContent = messages[i]; }, 1400);
     clearTimeout(fallback);
@@ -366,6 +366,9 @@
     if (/^(mailto|tel|sms|javascript):/i.test(href) || /\/(statement|attachments)\b/.test(href) || /export=csv/.test(href)) return;
     if (a.origin && a.origin !== location.origin) return;
     if (a.pathname === location.pathname && a.search === location.search && a.hash) return;
+    // Hold navigation briefly so the dial is actually seen on fast pages.
+    e.preventDefault();
     show();
+    setTimeout(function () { location.href = a.href; }, 550);
   });
 })();
