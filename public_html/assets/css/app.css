@@ -633,3 +633,15 @@ body[class*="bg-"]:not(.bg-plain) .filters, body[class*="bg-"]:not(.bg-plain) .f
 @media (prefers-reduced-motion: reduce) {
   body.bg-aurora::before, body.bg-prism::before { animation: none; }
 }
+
+/* ─── Account status banner (dashboard) ─── */
+.status-banner { display: flex; gap: .85rem; align-items: flex-start; margin: 0 0 1.25rem;
+  padding: .9rem 1.05rem; border-radius: var(--radius); border: 1px solid var(--warn);
+  background: color-mix(in srgb, var(--warn) 12%, var(--surface)); }
+.status-banner .sb-ico { flex: none; display: grid; place-items: center; width: 34px; height: 34px;
+  border-radius: 10px; background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
+.status-banner .sb-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .4rem; }
+.status-banner .sb-line { display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+  color: var(--text); text-decoration: none; }
+.status-banner .sb-line:hover strong { text-decoration: underline; }
+.status-banner .sb-note { margin: .15rem 0 0; }

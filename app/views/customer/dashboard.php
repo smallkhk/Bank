@@ -19,6 +19,22 @@ $change = $vals[count($vals) - 1] - $vals[0];
     <h1><?= e(greeting()) ?>, <?= e($first) ?></h1></div>
 </div>
 
+<?php $flagged = array_filter($accounts, fn ($a) => $a['status'] !== 'active'); ?>
+<?php if ($flagged): ?>
+  <div class="status-banner" role="status">
+    <span class="sb-ico"><?= icon('shield', 20) ?></span>
+    <div class="sb-body">
+      <?php foreach ($flagged as $a): ?>
+        <a class="sb-line" href="<?= e(url('accounts/' . $a['id'])) ?>">
+          <span><strong><?= e($a['nickname'] ?: $a['type_name']) ?></strong> <span class="muted mono small">•••• <?= e(substr($a['account_number'], -4)) ?></span></span>
+          <?= status_badge($a['status']) ?>
+        </a>
+      <?php endforeach; ?>
+      <p class="sb-note muted small">Some actions are limited on <?= count($flagged) === 1 ? 'this account' : 'these accounts' ?>. Contact support if you need help.</p>
+    </div>
+  </div>
+<?php endif; ?>
+
 <div class="hero-grid">
   <section class="balance-hero" aria-label="Balance summary">
     <div class="bh-top"><span>Total balance · <?= count(array_filter($accounts, fn ($a) => (int) $a['credit_limit'] === 0)) ?> account<?= count($accounts) === 1 ? '' : 's' ?></span>
