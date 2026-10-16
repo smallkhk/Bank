@@ -27,7 +27,7 @@ final class SmtpMailer
         return ['ok' => true, 'message' => 'Connected and signed in to ' . $c['host'] . '.'];
     }
 
-    public static function send(array $c, string $to, string $subject, string $text, string $fromEmail, string $fromName): bool
+    public static function send(array $c, string $to, string $subject, string $text, string $fromEmail, string $fromName, ?string $html = null): bool
     {
         $start = microtime(true);
         try {
@@ -42,10 +42,20 @@ final class SmtpMailer
                 'Subject: =?UTF-8?B?' . base64_encode($subject) . '?=',
                 'Message-ID: <' . bin2hex(random_bytes(12)) . '@' . (explode('@', $fromEmail)[1] ?? 'localhost') . '>',
                 'MIME-Version: 1.0',
-                'Content-Type: text/plain; charset=UTF-8',
-                'Content-Transfer-Encoding: base64',
             ];
-            $data = implode("\r\n", $headers) . "\r\n\r\n" . rtrim(chunk_split(base64_encode($text), 76, "\r\n")) . "\r\n.";
+            $b64 = static fn (string $v): string => rtrim(chunk_split(base64_encode($v), 76, "\r\n"));
+            if ($html !== null && $html !== '') {
+                $bnd = 'b' . bin2hex(random_bytes(12));
+                $headers[] = 'Content-Type: multipart/alternative; boundary="' . $bnd . '"';
+                $mime = "--$bnd\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . $b64($text) . "\r\n"
+                    . "--$bnd\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . $b64($html) . "\r\n"
+                    . "--$bnd--";
+            } else {
+                $headers[] = 'Content-Type: text/plain; charset=UTF-8';
+                $headers[] = 'Content-Transfer-Encoding: base64';
+                $mime = $b64($text);
+            }
+            $data = implode("\r\n", $headers) . "\r\n\r\n" . $mime . "\r\n.";
             self::cmd($s, $data, [250]);
             self::cmd($s, 'QUIT', [221]);
             fclose($s);
