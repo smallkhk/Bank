@@ -97,6 +97,15 @@
 <?php endif; ?>
 <section class="card">
   <h2>Security</h2>
+  <?php $fails = (int) App\Core\Db::value("SELECT COUNT(*) FROM login_attempts WHERE success = 0 AND identifier IN (?, ?) AND created_at > UTC_TIMESTAMP() - INTERVAL ? MINUTE",
+      [strtolower((string) $c['username']), strtolower((string) $c['email']), (int) setting('login_lockout_minutes', '15')]);
+    $locked = $fails >= (int) setting('login_max_attempts', '5'); ?>
+  <dl class="kv"><dt>Failed sign-ins</dt><dd><?= $fails ?> in the last <?= (int) setting('login_lockout_minutes', '15') ?> min <?= $locked ? '<span class="badge badge-danger">Locked out</span>' : '' ?></dd></dl>
+  <?php if ($fails && can('customers.lock')): ?>
+  <form method="post" action="<?= e(url('admin/customers/' . $c['id'] . '/clear-lockout')) ?>" class="inline-form"><?= csrf_field() ?>
+    <input name="reason" required placeholder="Reason (e.g. customer called, identity verified)" maxlength="255">
+    <button class="btn btn-secondary btn-sm">Clear login lockout</button></form>
+  <?php endif; ?>
   <dl class="kv"><dt>Two-step verification</dt><dd><?= $twofa ? '<span class="badge badge-success">On</span>' : '<span class="badge badge-muted">Off</span>' ?></dd></dl>
   <?php if ($twofa && can('customers.lock')): ?>
   <form method="post" action="<?= e(url('admin/customers/' . $c['id'] . '/reset-2fa')) ?>" class="inline-form"><?= csrf_field() ?>

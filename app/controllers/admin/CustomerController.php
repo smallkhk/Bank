@@ -189,6 +189,19 @@ final class CustomerController extends Controller
         redirect($back);
     }
 
+    /** Clears failed sign-in attempts so a throttled customer can try again immediately. */
+    public function clearLockout(string $id): void
+    {
+        $c = $this->load((int) $id);
+        $back = '/admin/customers/' . $c['id'];
+        $reason = $this->requireReason($back);
+        $n = Db::query('DELETE FROM login_attempts WHERE success = 0 AND identifier IN (?, ?)',
+            [strtolower((string) $c['username']), strtolower((string) $c['email'])])->rowCount();
+        AuditService::log('security.lockout_cleared_by_staff', 'customer', $c['id'], null, ['cleared' => $n], $reason);
+        flash('success', $n ? "Login lockout cleared ({$n} failed attempts removed). The customer can sign in now." : 'There were no failed attempts to clear.');
+        redirect($back);
+    }
+
     public function openAccount(string $id): void
     {
         $c = $this->load((int) $id);

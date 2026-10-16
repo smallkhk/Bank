@@ -102,6 +102,7 @@ $router->post('/admin/customers/{id}/managers', [Admin\CustomerController::class
 $router->post('/admin/customers/{id}/managers/{mid}/remove', [Admin\CustomerController::class, 'removeManager'], ['perm:accounts.assign_manager']);
 $router->post('/admin/customers/{id}/accounts', [Admin\CustomerController::class, 'openAccount'], ['perm:accounts.create']);
 $router->post('/admin/customers/{id}/tickets', [Admin\SupportController::class, 'store'], ['perm:support.view']);
+$router->post('/admin/customers/{id}/clear-lockout', [Admin\CustomerController::class, 'clearLockout'], ['perm:customers.lock']);
 $router->post('/admin/customers/{id}/reset-2fa', [Admin\CustomerController::class, 'resetTwoFactor'], ['perm:customers.lock']);
 
 $router->get('/admin/accounts', [Admin\AccountController::class, 'index'], ['perm:accounts.view']);
